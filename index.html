@@ -1,0 +1,4539 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة متابعة الحصر الميداني - غزة</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --panel: #ffffff;
+      --line: #d7e0e8;
+      --text: #203040;
+      --muted: #6e7b88;
+      --primary: #18354a;
+      --primary-2: #28516c;
+      --blue: #2f80ed;
+      --yellow: #f2c94c;
+      --green: #27ae60;
+      --orange: #f2994a;
+      --danger: #d9534f;
+      --shadow: 0 10px 28px rgba(16, 35, 52, .08);
+      --shadow-hover: 0 16px 34px rgba(16, 35, 52, .14);
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      background: linear-gradient(180deg, #edf2f6 0%, #f7fafc 100%);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      height: 100vh;
+    }
+
+    .app {
+      transition: grid-template-columns .35s ease;
+    }
+
+    .sidebar {
+      width: 310px;
+      min-width: 310px;
+      transition: transform .35s ease, opacity .25s ease, width .35s ease, min-width .35s ease, padding .35s ease;
+      transform-origin: right center;
+    }
+
+    .content {
+      transition: padding .35s ease;
+    }
+
+    .app.sidebar-collapsed {
+      grid-template-columns: 0 1fr;
+    }
+
+    .app.sidebar-collapsed .sidebar {
+      transform: translateX(120%);
+      opacity: 0;
+      width: 0;
+      min-width: 0;
+      padding: 0;
+      border-left: none;
+      overflow: hidden;
+    }
+
+    .sidebar-toggle-btn {
+      min-width: 132px;
+    }
+
+    .chart-builder-panel,
+    .edit-shape-panel {
+      display: none;
+    }
+
+    .chart-builder-panel.active,
+    .edit-shape-panel.active {
+      display: block;
+    }
+
+    .chart-preview-section {
+      display: none;
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-preview-section.active {
+      display: block;
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      min-height: 360px;
+    }
+
+    .chart-canvas-wrap canvas {
+      max-height: 420px;
+    }
+
+    .shape-edit-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .leaflet-draw {
+      display: none !important;
+    }
+
+    .password-manage-panel {
+      display: none;
+    }
+
+    .password-manage-panel.active {
+      display: block;
+    }
+
+    .sidebar {
+      background: rgba(248, 251, 253, .94);
+      backdrop-filter: blur(10px);
+      border-left: 1px solid var(--line);
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .brand {
+      background: linear-gradient(135deg, #173247, #28516c);
+      color: #fff;
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      transition: .3s ease;
+    }
+
+    .brand:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover)
+    }
+
+    .brand h2 {
+      margin: 0 0 6px;
+      font-size: 20px
+    }
+
+    .brand p {
+      margin: 0;
+      font-size: 12px;
+      opacity: .95;
+      line-height: 1.7
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      transition: .25s ease;
+    }
+
+    .panel:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover)
+    }
+
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: var(--primary)
+    }
+
+    .field {
+      margin-bottom: 10px
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #cfd9e2;
+      border-radius: 11px;
+      font-size: 13px;
+      background: #fff;
+      outline: none;
+      transition: .25s ease;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #7aa7cf;
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, .12);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      border: none;
+      border-radius: 11px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: .25s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px)
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #fff
+    }
+
+    .btn-light {
+      background: #e7eef4;
+      color: #173247
+    }
+
+    .btn-success {
+      background: var(--green);
+      color: #fff
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 5px;
+      border: 1px solid rgba(0, 0, 0, .08);
+    }
+
+    .color-picker {
+      width: 18px;
+      height: 18px;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      background: none;
+    }
+
+    .color-picker::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .color-picker::-webkit-color-swatch {
+      border: 1px solid rgba(0, 0, 0, .15);
+      border-radius: 4px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 12px 12px 12px 28px;
+      min-width: 0;
+    }
+
+    .topbar {
+      background: linear-gradient(135deg, rgba(255, 255, 255, .98), rgba(245, 249, 252, .98));
+      border: 1px solid #dbe5ec;
+      border-radius: 24px;
+      padding: 18px 20px;
+      box-shadow: 0 14px 36px rgba(16, 35, 52, .10);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--primary);
+      letter-spacing: .2px
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .hero-progress {
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 180px 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .hero-progress .kpi-title {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .hero-progress .kpi-value {
+      font-size: 28px;
+      color: var(--primary);
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .progress-shell {
+      height: 14px;
+      background: #edf3f7;
+      border-radius: 999px;
+      position: relative;
+      border: 1px solid #dde7ee;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background-size: 200% 100%;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1), background 0.5s ease;
+      animation: progressFlow 2s linear infinite, pulseGlow 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes progressFlow {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: 0 0;
+      }
+    }
+
+    @keyframes pulseGlow {
+      0% {
+        box-shadow: 0 0 6px var(--glow-color, rgba(47, 128, 237, 0.4));
+      }
+
+      100% {
+        box-shadow: 0 0 18px var(--glow-color, rgba(47, 128, 237, 0.85));
+      }
+    }
+
+    .progress-caption {
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 120px;
+      text-align: left;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: var(--shadow);
+      transition: .3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hover)
+    }
+
+    .card .label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px
+    }
+
+    .card .value {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--primary)
+    }
+
+    .map-wrap {
+      min-height: 0;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .map-floating {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 900;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .dashboard-footer {
+      text-align: center;
+      padding: 14px;
+      margin-top: 14px;
+      background: #f5f7fa;
+      border-top: 1px solid #d9e1e7;
+      font-size: 13px;
+      color: #4a5a67;
+    }
+
+
+    .mode-inline {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #f4f7fa;
+      border: 1px solid var(--line);
+    }
+
+
+    .topbar::before {
+      content: "";
+      position: absolute;
+      inset: auto 20px 0 20px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2f80ed, #27ae60, #f2c94c, #232179);
+      background-size: 200% 100%;
+      animation: moveLineGradient 3s ease infinite;
+      box-shadow: 0 -2px 12px rgba(47, 128, 237, 0.6), 0 -4px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    @keyframes moveLineGradient {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .topbar {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .title-wrap h2 {
+      font-size: 24px;
+      margin: 0;
+      color: var(--primary);
+    }
+
+    .title-wrap p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .top-actions .btn-light,
+    .top-actions .btn-success,
+    .top-actions .btn-primary {
+      border: 1px solid #dbe5ec;
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 4px 10px rgba(16, 35, 52, .06);
+    }
+
+    .top-actions .btn-light:hover,
+    .top-actions .btn-success:hover,
+    .top-actions .btn-primary:hover {
+      background: #f6fbff;
+    }
+
+    .mode-inline {
+      background: linear-gradient(135deg, #f6fbff, #ffffff);
+      border: 1px solid #d8e6f1;
+      color: #2b5876;
+      font-weight: 600;
+    }
+
+    .brand {
+      background: linear-gradient(160deg, #173247, #28516c 55%, #2f80ed 130%);
+    }
+
+    .card {
+      border: 1px solid #e1ebf2;
+      box-shadow: 0 8px 18px rgba(16, 35, 52, .06);
+    }
+
+    .card .label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .panel,
+    .table-card {
+      border: 1px solid #e1ebf2;
+      box-shadow: 0 10px 24px rgba(16, 35, 52, .06);
+    }
+
+    .table-card h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-card h3::after {
+      content: "Live";
+      font-size: 11px;
+      color: #2f80ed;
+      background: #eef6ff;
+      border: 1px solid #d8e8fb;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .stats-table td:last-child {
+      font-weight: 700;
+      color: #1c5d3e;
+    }
+
+    .dashboard-footer {
+      text-align: center;
+      padding: 14px;
+      margin-top: 12px;
+      background: #f5f8fb;
+      border-top: 1px solid #d9e1e7;
+      border-radius: 14px;
+      font-size: 13px;
+      color: #4a5a67;
+    }
+
+    .reset-dashboard-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: linear-gradient(135deg, #fff, #f6fbff);
+      border: 1px dashed #c9d9e6;
+      color: #234f73;
+    }
+
+    .auth-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 35, 52, .45);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 4500;
+      padding: 18px;
+    }
+
+    .auth-modal.active {
+      display: flex
+    }
+
+    .auth-card {
+      width: min(420px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow-hover);
+      padding: 22px;
+    }
+
+    .auth-card h3 {
+      margin: 0 0 8px;
+      color: var(--primary);
+      font-size: 22px
+    }
+
+    .auth-card p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.8
+    }
+
+    .auth-card input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #cfd9e2;
+      border-radius: 14px;
+      font-size: 18px;
+      letter-spacing: 3px;
+      text-align: center;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .auth-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    .auth-error {
+      min-height: 20px;
+      color: #d9534f;
+      font-size: 13px;
+      margin: 8px 0 0
+    }
+
+    .welcome-toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-24px);
+      min-width: 320px;
+      max-width: min(92vw, 640px);
+      background: linear-gradient(135deg, #173247, #28516c);
+      color: #fff;
+      border-radius: 18px;
+      box-shadow: 0 18px 44px rgba(16, 35, 52, .24);
+      padding: 16px 20px;
+      z-index: 4600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all .45s ease;
+    }
+
+    .welcome-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    .welcome-toast .small {
+      display: block;
+      font-size: 12px;
+      opacity: .85;
+      margin-top: 4px
+    }
+
+    .notice-toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      min-width: 320px;
+      max-width: min(92vw, 560px);
+      background: #ffffff;
+      color: #173247;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 18px 44px rgba(16, 35, 52, .18);
+      padding: 14px 18px;
+      z-index: 4700;
+      opacity: 0;
+      pointer-events: none;
+      transition: all .35s ease;
+    }
+
+    .notice-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .notice-toast.success {
+      border-inline-start: 6px solid #27AE60;
+    }
+
+    .notice-toast.error {
+      border-inline-start: 6px solid #d9534f;
+    }
+
+    .notice-title {
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .notice-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .map-analytics {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .analytics-stack {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      min-height: 560px;
+    }
+
+    #map {
+      width: 100%;
+      height: 560px;
+      min-height: 560px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-card {
+      min-height: 0
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 250px
+    }
+
+    .tables-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .table-card {
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .header-logos {
+      display: flex;
+      gap: 10px;
+    }
+
+    .header-logos img {
+      height: 40px;
+    }
+
+    .dashboard-title {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .dashboard-footer {
+      text-align: center;
+      padding: 12px;
+      margin-top: 10px;
+      background: #f5f7fa;
+      border-top: 1px solid #d9e1e7;
+      font-size: 13px;
+    }
+
+    .footer-logos {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      padding: 10px;
+    }
+
+    .footer-logos img {
+      height: 40px;
+      opacity: 0.9;
+    }
+
+    .table-card h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      color: var(--primary)
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 100%;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .stats-table th {
+      position: sticky;
+      top: 0;
+      background: #f8fbfd;
+      color: var(--primary);
+      font-weight: 700;
+      z-index: 1;
+    }
+
+    .stats-table tbody tr:hover {
+      background: #f8fbfd;
+    }
+
+    .stats-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .leaflet-popup-content {
+      font-family: Tahoma, Arial, sans-serif;
+      min-width: 250px;
+      line-height: 1.8;
+    }
+
+    .popup-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .popup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .popup-box {
+      background: #f8fbfd;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 12px;
+    }
+
+    .popup-box strong {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    .edit-form {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .edit-form .field {
+      margin-bottom: 8px
+    }
+
+    .edit-form input,
+    .edit-form select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cfd9e2;
+      border-radius: 10px;
+    }
+
+    .gov-label {
+      background: rgba(24, 53, 74, .88);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(16, 35, 52, .18);
+      direction: rtl;
+    }
+
+    .loader-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(244, 247, 250, .92);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5000;
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+
+    .loader-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader-card {
+      min-width: 280px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow-hover);
+      padding: 22px 24px;
+      text-align: center;
+    }
+
+    .loader-spinner {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      margin: 0 auto 14px;
+      border: 5px solid #dce8f3;
+      border-top-color: #2f80ed;
+      animation: spin 1s linear infinite;
+    }
+
+    .loader-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    .loader-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn .45s ease
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @media (max-width:1200px) {
+      .cards {
+        grid-template-columns: repeat(3, minmax(100px, 1fr))
+      }
+
+      .tables-section {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media (max-width:900px) {
+      .app {
+        grid-template-columns: 1fr
+      }
+
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--line)
+      }
+
+      .content {
+        padding: 18px;
+        grid-template-rows: auto auto auto auto
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start
+      }
+
+      .hero-progress {
+        grid-template-columns: 1fr;
+        gap: 10px
+      }
+
+      .progress-caption {
+        text-align: right
+      }
+
+      .map-analytics {
+        grid-template-columns: 1fr
+      }
+
+      .analytics-stack {
+        grid-template-rows: auto auto;
+        min-height: auto
+      }
+
+      #map {
+        height: 440px;
+        min-height: 440px
+      }
+    }
+
+    /* ===== Simple Professional Coloring (Cards + Tables) ===== */
+    .card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbfd 100%);
+    }
+
+    .card:nth-child(1) {
+      background: linear-gradient(135deg, #eef6ff 0%, #ffffff 100%)
+    }
+
+    .card:nth-child(2) {
+      background: linear-gradient(135deg, #eefaf3 0%, #ffffff 100%)
+    }
+
+    .card:nth-child(3) {
+      background: linear-gradient(135deg, #fff9e8 0%, #ffffff 100%)
+    }
+
+    .card:nth-child(4) {
+      background: linear-gradient(135deg, #eef5ff 0%, #ffffff 100%)
+    }
+
+    .card:nth-child(5) {
+      background: linear-gradient(135deg, #f7fbff 0%, #ffffff 100%)
+    }
+
+    .card:nth-child(6) {
+      background: linear-gradient(135deg, #effcff 0%, #ffffff 100%)
+    }
+
+    .stats-table thead {
+      background: #f3f7fb;
+    }
+
+    .stats-table th {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .stats-table tbody tr:nth-child(even) {
+      background: #fafcfe;
+    }
+
+    .stats-table tbody tr:hover {
+      background: #eef6ff;
+    }
+
+    /* Accent lines for the two tables */
+    .tables-section .table-card:nth-child(1) {
+      border-top: 4px solid #2f80ed;
+    }
+
+    .tables-section .table-card:nth-child(2) {
+      border-top: 4px solid #27ae60;
+    }
+
+
+    /* ===== Strong Glass Effect ===== */
+    body {
+      background: linear-gradient(180deg, #eef2f6 0%, #f7fafc 100%);
+    }
+
+    /* header glass */
+    header,
+    .header,
+    .topbar {
+      background: rgba(255, 255, 255, 0.55) !important;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    /* cards */
+    .card {
+      background: rgba(255, 255, 255, 0.65) !important;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    /* table panels */
+    .table-card {
+      background: rgba(255, 255, 255, 0.65) !important;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.07);
+    }
+
+    /* sidebar glass */
+    .sidebar {
+      background: rgba(255, 255, 255, 0.60) !important;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-left: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    /* hover effect */
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
+      transition: 0.25s;
+    }
+
+
+    /* ===== Enhanced Visible Glass UI ===== */
+
+    body {
+      background: linear-gradient(160deg, #e9eef5 0%, #f6f9fc 60%, #eef3f8 100%);
+    }
+
+    /* header glass */
+    header,
+    .header,
+    .topbar {
+      background: rgba(255, 255, 255, 0.55) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* cards */
+    .card {
+      background: rgba(255, 255, 255, 0.72) !important;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.10);
+      transition: all .25s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.14);
+    }
+
+    /* tables */
+    .table-card {
+      background: rgba(255, 255, 255, 0.72) !important;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.09);
+    }
+
+    /* sidebar */
+    .sidebar {
+      background: rgba(255, 255, 255, 0.65) !important;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-left: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+
+
+    /* ===== UI Upgrade ===== */
+
+    /* smoother fonts spacing */
+    body {
+      letter-spacing: 0.2px;
+    }
+
+    /* top header enhancement */
+    .topbar {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    /* cards more modern */
+    .card {
+      border-radius: 18px;
+      transition: all .25s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.14), 0 0 25px rgba(47, 128, 237, 0.4), 0 0 25px rgba(39, 174, 96, 0.2);
+    }
+
+    /* table styling */
+    .table-card {
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .stats-table thead {
+      background: linear-gradient(135deg, #f4f8fc, #eef3f8);
+    }
+
+    .stats-table th {
+      font-weight: 600;
+    }
+
+    /* subtle row hover */
+    .stats-table tbody tr:hover {
+      background: #f6fbff;
+    }
+
+    /* map container stronger shadow */
+    #map {
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    /* smoother buttons */
+    button {
+      transition: all .2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    /* subtle dashboard animation */
+    .card .value {
+      animation: fadeIn .6s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+
+
+    /* ===== Advanced UI Enhancements ===== */
+    .mini-stats {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: -6px 0 0;
+    }
+
+    .mini-stat {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+    }
+
+    .mini-stat .k {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .mini-stat .v {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .kpi-trend {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #2f80ed;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30% -40% auto;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47, 128, 237, 0.12), rgba(47, 128, 237, 0));
+      pointer-events: none;
+    }
+
+    .card .value {
+      transition: transform .2s ease;
+    }
+
+    .card:hover .value {
+      transform: scale(1.04);
+    }
+
+    .zone-glow {
+      filter: drop-shadow(0 0 8px rgba(47, 128, 237, .55));
+    }
+
+    @keyframes pulseGlow1 {
+      0% {
+        box-shadow: 0 0 20px 4px var(--glow-color-1);
+      }
+
+      50% {
+        box-shadow: 0 0 32px 7px var(--glow-color-1);
+      }
+
+      100% {
+        box-shadow: 0 0 20px 4px var(--glow-color-1);
+      }
+
+      0% {
+        box-shadow: 0 0 10px 2px var(--glow-color-1);
+      }
+
+      50% {
+        box-shadow: 0 0 16px 4px var(--glow-color-1);
+      }
+
+      100% {
+        box-shadow: 0 0 10px 2px var(--glow-color-1);
+      }
+    }
+
+    @keyframes pulseGlow2 {
+      0% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px 12px 22px -2px var(--glow-color-2);
+      }
+
+      50% {
+        box-shadow: -17px -17px 32px 0px var(--glow-color-1), 17px 17px 32px 0px var(--glow-color-2);
+      }
+
+      100% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px 12px 22px -2px var(--glow-color-2);
+      }
+
+      0% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px 8px 12px -1px var(--glow-color-2);
+      }
+
+      50% {
+        box-shadow: -12px -12px 18px 1px var(--glow-color-1), 12px 12px 18px 1px var(--glow-color-2);
+      }
+
+      100% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px 8px 12px -1px var(--glow-color-2);
+      }
+    }
+
+    @keyframes pulseGlow3 {
+      0% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px -12px 22px -2px var(--glow-color-2), 0 15px 22px -2px var(--glow-color-3);
+      }
+
+      50% {
+        box-shadow: -17px -17px 32px 0px var(--glow-color-1), 17px -17px 32px 0px var(--glow-color-2), 0 20px 32px 0px var(--glow-color-3);
+      }
+
+      100% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px -12px 22px -2px var(--glow-color-2), 0 15px 22px -2px var(--glow-color-3);
+      }
+
+      0% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px -8px 12px -1px var(--glow-color-2), 0 10px 12px -1px var(--glow-color-3);
+      }
+
+      50% {
+        box-shadow: -12px -12px 18px 1px var(--glow-color-1), 12px -12px 18px 1px var(--glow-color-2), 0 14px 18px 1px var(--glow-color-3);
+      }
+
+      100% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px -8px 12px -1px var(--glow-color-2), 0 10px 12px -1px var(--glow-color-3);
+      }
+    }
+
+    @keyframes pulseGlow4 {
+      0% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px -12px 22px -2px var(--glow-color-2), 12px 12px 22px -2px var(--glow-color-3), -12px 12px 22px -2px var(--glow-color-4);
+      }
+
+      50% {
+        box-shadow: -17px -17px 32px 0px var(--glow-color-1), 17px -17px 32px 0px var(--glow-color-2), 17px 17px 32px 0px var(--glow-color-3), -17px 17px 32px 0px var(--glow-color-4);
+      }
+
+      100% {
+        box-shadow: -12px -12px 22px -2px var(--glow-color-1), 12px -12px 22px -2px var(--glow-color-2), 12px 12px 22px -2px var(--glow-color-3), -12px 12px 22px -2px var(--glow-color-4);
+      }
+
+      0% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px -8px 12px -1px var(--glow-color-2), 8px 8px 12px -1px var(--glow-color-3), -8px 8px 12px -1px var(--glow-color-4);
+      }
+
+      50% {
+        box-shadow: -12px -12px 18px 1px var(--glow-color-1), 12px -12px 18px 1px var(--glow-color-2), 12px 12px 18px 1px var(--glow-color-3), -12px 12px 18px 1px var(--glow-color-4);
+      }
+
+      100% {
+        box-shadow: -8px -8px 12px -1px var(--glow-color-1), 8px -8px 12px -1px var(--glow-color-2), 8px 8px 12px -1px var(--glow-color-3), -8px 8px 12px -1px var(--glow-color-4);
+      }
+    }
+
+    @media (max-width:900px) {
+      .mini-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    .logo-easter-egg {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(16, 35, 52, .55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 4700;
+    }
+
+    .logo-easter-egg.show {
+      display: flex;
+      animation: eggFadeIn .35s ease;
+    }
+
+    .logo-easter-egg .egg-card {
+      background: rgba(255, 255, 255, .9);
+      border: 1px solid rgba(255, 255, 255, .6);
+      border-radius: 28px;
+      padding: 28px 30px;
+      box-shadow: 0 24px 60px rgba(16, 35, 52, .25);
+      text-align: center;
+      transform: scale(.92);
+      animation: eggPop 0.55s ease forwards;
+    }
+
+    .logo-easter-egg img {
+      width: 160px;
+      max-width: 40vw;
+      height: auto;
+      display: block;
+      margin: 0 auto 14px;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .18));
+    }
+
+    .logo-easter-egg .egg-text {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    @keyframes eggFadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    @keyframes eggPop {
+      0% {
+        transform: scale(.88) translateY(10px);
+        opacity: 0
+      }
+
+      60% {
+        transform: scale(1.03) translateY(0);
+        opacity: 1
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1
+      }
+    }
+
+    /* ===== Dark Mode ===== */
+    body.dark-mode {
+      --bg: #121620;
+      --panel: #1a2235;
+      --line: #2a3650;
+      --text: #e0e6ed;
+      --muted: #8d9eb5;
+      --primary: #4fa3e3;
+      --primary-2: #2f80ed;
+      --shadow: 0 10px 28px rgba(0, 0, 0, .4);
+      --shadow-hover: 0 16px 34px rgba(0, 0, 0, .5);
+      background: linear-gradient(180deg, #121420 0%, #1a1c2e 100%);
+    }
+
+    body.dark-mode .sidebar,
+    body.dark-mode .topbar,
+    body.dark-mode .card,
+    body.dark-mode .table-card,
+    body.dark-mode .auth-card,
+    body.dark-mode .loader-card,
+    body.dark-mode .mini-stat,
+    body.dark-mode .hero-progress,
+    body.dark-mode .dashboard-footer {
+      background: rgba(26, 34, 53, 0.85) !important;
+      border-color: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    body.dark-mode input,
+    body.dark-mode select {
+      background: #141b2d;
+      color: #e0e6ed;
+      border-color: #2a3650;
+    }
+
+    body.dark-mode .top-actions .btn-light,
+    body.dark-mode .mode-inline {
+      background: #202b45;
+      color: #e0e6ed;
+      border-color: #2a3650;
+    }
+
+    body.dark-mode .stats-table thead,
+    body.dark-mode .stats-table th {
+      background: #2a3650;
+      color: var(--primary);
+    }
+
+    body.dark-mode .stats-table tbody tr:hover {
+      background: #202b45;
+    }
+
+    body.dark-mode .stats-table tbody tr:nth-child(even) {
+      background: #1a233a;
+    }
+
+    body.dark-mode .stats-table td:last-child {
+      color: #4ade80;
+    }
+
+    body.dark-mode .popup-box {
+      background: #141b2d;
+      color: #e0e6ed;
+      border-color: #2a3650;
+    }
+
+    body.dark-mode .leaflet-popup-content-wrapper,
+    body.dark-mode .leaflet-popup-tip {
+      background: #1a2235;
+      color: #e0e6ed;
+    }
+
+    body.dark-mode .leaflet-container {
+      background: #121620;
+    }
+
+    body.dark-mode .leaflet-tile-pane {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+      transition: filter 0.3s ease;
+    }
+
+    .shape-edit-confirm-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(80, 0, 0, .35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 4800;
+      padding: 18px;
+    }
+
+    .shape-edit-confirm-modal.active {
+      display: flex;
+      animation: shapeEditFadeIn .28s ease
+    }
+
+    @keyframes shapeEditFadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    @keyframes shapeEditCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(.96)
+      }
+
+      60% {
+        opacity: 1;
+        transform: translateY(-4px) scale(1.01)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+    }
+
+    .shape-edit-confirm-card {
+      width: min(460px, 100%);
+      background: rgba(150, 0, 0, 0.22);
+      border: 1px solid rgba(255, 80, 80, .45);
+      border-radius: 22px;
+      box-shadow: 0 24px 60px rgba(80, 0, 0, .28);
+      padding: 22px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      animation: shapeEditCardIn .3s ease;
+    }
+
+    .shape-edit-confirm-card h3 {
+      margin: 0 0 10px;
+      color: #fff;
+      font-size: 22px
+    }
+
+    .shape-edit-confirm-card p {
+      margin: 0 0 14px;
+      color: #ffe6e6;
+      font-size: 13px;
+      line-height: 1.9
+    }
+
+    .shape-edit-confirm-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    /* Zone Details Sidebar */
+    .zone-details-sidebar {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 400px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+      z-index: 10001;
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 0;
+      overflow-y: auto;
+      border-left: 1px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      flex-direction: column;
+      direction: rtl;
+    }
+
+    .zone-details-sidebar.active {
+      right: 0;
+      animation: fadeInRightSpecial 0.5s ease-out both;
+    }
+
+    @keyframes fadeInRightSpecial {
+      from {
+        opacity: 0;
+        transform: translateX(50px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .sidebar-header-special {
+      padding: 24px;
+      background: linear-gradient(135deg, #18354a, #28516c);
+      color: white;
+      position: relative;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-close-special {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .sidebar-close-special:hover {
+      background: #d9534f;
+      transform: rotate(90deg);
+      border-color: transparent;
+    }
+
+    .sidebar-content-special {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .detail-card-special {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .detail-row-special {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      padding-bottom: 8px;
+    }
+
+    .detail-row-special:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .detail-label-special {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .detail-value-special {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .status-count-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #edf2f7;
+    }
+
+    .status-icon-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+    }
+
+    /* Custom Tooltip Styling */
+    .custom-zone-tooltip {
+      background: rgba(25, 45, 65, 0.95) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      border-radius: 14px !important;
+      padding: 12px 18px !important;
+      color: white !important;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3) !important;
+      font-family: Tahoma, Arial, sans-serif !important;
+      direction: rtl;
+    }
+
+    .tooltip-title-special {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 6px;
+      color: #fff;
+    }
+
+    .tooltip-row-special {
+      display: flex;
+      justify-content: space-between;
+      gap: 25px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .tooltip-row-special span:last-child {
+      font-weight: 700;
+      color: #74b9ff;
+    }
+  </style>
+  <link rel="icon" href="data:,">
+</head>
+
+<body>
+  <div id="loaderOverlay" class="loader-overlay">
+    <div class="loader-card">
+      <div class="loader-spinner"></div>
+      <div class="loader-title">جاري تحميل لوحة المتابعة</div>
+      <div class="loader-sub">يتم تجهيز الخريطة والبيانات الآن...</div>
+    </div>
+  </div>
+  <div class="app">
+
+    <aside class="sidebar fade-in">
+      <div class="brand">
+        <h2>لوحة GIS</h2>
+        <p>الوضع الافتراضي للواجهة هو العرض فقط، ويمكن التبديل إلى وضع التعديل من أعلى الصفحة</p>
+      </div>
+
+      <div class="panel">
+        <h3>البحث السريع</h3>
+        <div class="field">
+          <label>اسم المنطقة أو كود الزون أو Work_ID أو Area_Code</label>
+          <input id="searchText" placeholder="مثال: FNJA0005_E002 أو اسم المنطقة" oninput="applyFilters()">
+        </div>
+
+      </div>
+
+      <div class="panel">
+        <h3>الفلاتر</h3>
+        <div class="field">
+          <label>المحافظة</label>
+          <select id="filterGov" onchange="applyFilters()"></select>
+        </div>
+        <div class="field">
+          <label>حالة الحصر</label>
+          <select id="filterStatus" onchange="applyFilters()"></select>
+        </div>
+        <div class="field">
+          <label>كود منطقة العمل</label>
+          <select id="filterWork" onchange="applyFilters()"></select>
+        </div>
+        <div class="field">
+          <label>كود الحصر الميداني</label>
+          <select id="filterArea" onchange="applyFilters()"></select>
+        </div>
+
+      </div>
+
+      <div class="panel">
+        <h3>مفتاح الخريطة</h3>
+        <div id="mapLegend">
+          <div class="legend-item"><span class="swatch" style="background:#2f80ed"></span><span>مناطق حصر جديدة</span>
+          </div>
+          <div class="legend-item"><span class="swatch" style="background:#f2c94c"></span><span>قيد الحصر</span></div>
+          <div class="legend-item"><span class="swatch" style="background:#27ae60"></span><span>تم الانتهاء</span></div>
+        </div>
+      </div>
+
+      <div class="panel" id="dataManagementPanel" style="display: none;">
+        <h3>إدارة البيانات</h3>
+        <div class="field">
+          <label>استبدال ملف البيانات (Excel / CSV)</label>
+          <input type="file" id="dataFileInput" accept=".csv, .xlsx, .xls" onchange="handleFileUpload(event)">
+        </div>
+        <button class="btn-light reset-dashboard-btn" onclick="window.resetBaseData()"
+          style="margin-bottom:12px; width:100%;">↩ استعادة البيانات الأساسية</button>
+        <div class="field">
+          <label>استبدال ملف الخريطة (GeoJSON)</label>
+          <input type="file" id="geoFileInput" accept=".geojson, .json" onchange="handleGeoFileUpload(event)">
+        </div>
+        <button class="btn-light reset-dashboard-btn" onclick="window.resetBaseMap()" style="width:100%;">↩ استعادة
+          الخريطة الأساسية</button>
+        <button class="btn-primary" onclick="window.exportGeoJSON()" style="width:100%; margin-top:12px;">💾 تحميل
+          الخريطة (GeoJSON)</button>
+      </div>
+
+      <div class="panel chart-builder-panel" id="chartBuilderPanel">
+        <h3>إنشاء الإحصائيات</h3>
+        <div class="field">
+          <label>شكل الإحصائية</label>
+          <select id="chartTypeSelect">
+            <option value="bar">عمودي</option>
+            <option value="pie">كعكة</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>التجميع حسب</label>
+          <select id="chartGroupBySelect">
+            <option value="status">حالة الحصر</option>
+            <option value="gov">المحافظة</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>المؤشر</label>
+          <select id="chartMetricSelect">
+            <option value="zones">عدد المناطق</option>
+            <option value="total">إجمالي المباني</option>
+            <option value="done">المباني المنجزة</option>
+            <option value="percent">نسبة الإنجاز</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="window.buildStatisticsChart()">تنفيذ</button>
+          <button class="btn-light" onclick="window.hideStatisticsChart()">إخفاء</button>
+        </div>
+      </div>
+
+      <div class="panel edit-shape-panel" id="editShapePanel">
+        <h3>تعديل الشيب</h3>
+        <div class="field">
+          <label>الطبقة المستهدفة</label>
+          <select id="shapeLayerSelect">
+            <option value="zones">الزونات</option>
+            <option value="governorates">المحافظات</option>
+          </select>
+        </div>
+        <div class="shape-edit-actions">
+          <button class="btn-primary" onclick="window.startShapeEdit()">بدء التعديل</button>
+          <button class="btn-light" onclick="window.stopShapeEdit()">إيقاف التعديل</button>
+        </div>
+        <button class="btn-success" onclick="window.exportEditedLayer()" style="width:100%; margin-top:10px;">تحميل
+          الشيب المعدل</button>
+      </div>
+
+      <div class="panel password-manage-panel" id="passwordManagePanel">
+        <h3>إدارة كلمة المرور</h3>
+        <button class="btn-light" style="width:100%;" onclick="window.openChangePasswordModal()">تغيير كلمة
+          المرور</button>
+      </div>
+
+    </aside>
+
+    <main class="content fade-in">
+      <div class="topbar">
+        <div>
+          <h1>لوحة متابعة الحصر الميداني - غزة</h1>
+          <p>واجهة عرض تفاعلية مع إمكانية التحول إلى وضع التعديل من الزر العلوي</p>
+        </div>
+        <div class="top-actions">
+          <button id="sidebarToggleBtn" class="btn-light sidebar-toggle-btn" onclick="toggleSidebar()">إخفاء القائمة
+            الجانبية</button>
+          <button id="darkModeToggleBtn" class="btn-light" onclick="toggleDarkMode()">🌙 الوضع الليلي</button>
+          <span id="modeInline" class="mode-inline">وضع العرض فقط</span>
+          <button id="editToggleBtn" class="btn-light" onclick="toggleEditMode()">✏️ Edit Mode</button>
+          <button class="btn-light" onclick="exportReports()">Export Excel</button>
+          <button class="btn-light" onclick="toggleMapFullscreen()">Fullscreen Map</button>
+          <button onclick="resetMapView(); resetFilters();">Reset View</button>
+        </div>
+      </div>
+
+      <div class="hero-progress">
+        <div>
+          <div class="kpi-title">مؤشر الإنجاز الكلي</div>
+          <div id="heroProgressValue" class="kpi-value">0%</div>
+        </div>
+        <div class="progress-shell">
+          <div id="heroProgressFill" class="progress-fill"></div>
+        </div>
+        <div id="heroProgressCaption" class="progress-caption">0 منجز / 0 إجمالي</div>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="label">إجمالي المناطق</div>
+          <div id="cardTotalZones" class="value">0</div>
+        </div>
+        <div class="card">
+          <div class="label">مناطق جديدة</div>
+          <div id="cardNew" class="value">0</div>
+        </div>
+        <div class="card">
+          <div class="label">قيد الحصر</div>
+          <div id="cardProgress" class="value">0</div>
+        </div>
+        <div class="card">
+          <div class="label">مناطق منتهية</div>
+          <div id="cardDone" class="value">0</div>
+        </div>
+        <div class="card">
+          <div class="label">إجمالي المباني</div>
+          <div id="cardBuildings" class="value">0</div>
+        </div>
+        <div class="card">
+          <div class="label">نسبة الإنجاز</div>
+          <div id="cardPercent" class="value">0%</div>
+        </div>
+      </div>
+
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="k">المتبقي من المباني</div>
+          <div id="miniRemaining" class="v">0</div>
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <div class="map-floating">
+          <div class="map-chip"></div>
+          <div class="map-chip" id="zonesCountChip"></div>
+        </div>
+
+        <div id="map"></div>
+      </div>
+
+
+      <div class="tables-section">
+        <div class="table-card">
+          <h3>إحصائيات حسب حالة الحصر</h3>
+          <div class="table-wrap">
+            <table class="stats-table" id="statusTable">
+              <thead>
+                <tr>
+                  <th>حالة الحصر</th>
+                  <th>عدد المناطق</th>
+                  <th>إجمالي المباني</th>
+                  <th>المباني المنجزة</th>
+                  <th>نسبة الإنجاز (%)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>إحصائيات حسب المحافظة</h3>
+          <div class="table-wrap">
+            <table class="stats-table" id="govTable">
+              <thead>
+                <tr>
+                  <th>المحافظة</th>
+                  <th>عدد المناطق</th>
+                  <th>إجمالي المباني</th>
+                  <th>المباني المنجزة</th>
+                  <th>نسبة الإنجاز (%)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <section id="chartPreviewSection" class="chart-preview-section">
+        <div class="table-card" style="margin-bottom:0;">
+          <h3 id="chartPreviewTitle">الإحصائيات</h3>
+          <div class="chart-canvas-wrap">
+            <canvas id="statisticsChartCanvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <footer class="dashboard-footer">
+        © جميع الحقوق محفوظة لدى الهيئة العربية الدولية للإعمار في فلسطين
+        (قسم نظم المعلومات الجغرافية GIS)
+      </footer>
+
+      <div class="footer-logos">
+        <img src="logo1.png">
+        <img src="logo2.png">
+        <img src="logo3.png">
+      </div>
+
+    </main>
+
+  </div>
+
+  <div id="authModal" class="auth-modal">
+    <div class="auth-card">
+      <h3>تأكيد وضع التعديل</h3>
+      <p>للدخول إلى وضع التعديل، يرجى إدخال كلمة السر الخاصة بوضع التعديل.</p>
+      <input id="authPassword" type="password" inputmode="numeric" maxlength="20" placeholder="أدخل كلمة المرور">
+      <div class="auth-actions">
+        <button class="btn-primary" onclick="submitEditPassword()">دخول</button>
+        <button class="btn-light" onclick="closeAuthModal()">إلغاء</button>
+      </div>
+      <div id="authError" class="auth-error"></div>
+    </div>
+  </div>
+
+  <div id="changePasswordModal" class="auth-modal">
+    <div class="auth-card">
+      <h3>تغيير كلمة المرور</h3>
+      <p>يمكنك تغيير كلمة مرور وضع التعديل من هنا.</p>
+      <input id="currentPasswordInput" type="password" maxlength="20" placeholder="كلمة المرور الحالية">
+      <input id="newPasswordInput" type="password" maxlength="20" placeholder="كلمة المرور الجديدة">
+      <input id="confirmPasswordInput" type="password" maxlength="20" placeholder="تأكيد كلمة المرور الجديدة">
+      <div class="auth-actions">
+        <button class="btn-primary" onclick="submitPasswordChange()">حفظ</button>
+        <button class="btn-light" onclick="closeChangePasswordModal()">إلغاء</button>
+      </div>
+      <div id="changePasswordError" class="auth-error"></div>
+    </div>
+  </div>
+
+  <div id="welcomeToast" class="welcome-toast">
+    <div><strong>اهلا وسهلا بك بشمهندس ابراهيم الجملة (أبو كريم)</strong></div>
+    <span class="small">تم تفعيل وضع التعديل بنجاح.</span>
+  </div>
+
+
+  <div id="noticeToast" class="notice-toast">
+    <div id="noticeTitle" class="notice-title"></div>
+    <div id="noticeSub" class="notice-sub"></div>
+  </div>
+
+
+  <div id="logoEasterEgg" class="logo-easter-egg">
+    <div class="egg-card">
+      <img src="./logo5.png" alt="logo5">
+      <div class="egg-text">403756935</div>
+    </div>
+  </div>
+
+
+  <div id="shapeEditConfirmModal" class="shape-edit-confirm-modal">
+    <div class="shape-edit-confirm-card">
+      <h3>تأكيد بدء التعديل</h3>
+      <p>عند الضغط على موافق سيتم تفعيل وضع تعديل الشيب للطبقة المختارة، ولن تظهر أي نقاط تعديل إلا بعد الضغط على الشكل
+        نفسه. وسيتم إيقاف الـ Popup والـ Tooltip أثناء التعديل بالكامل حتى تضغط على إيقاف التعديل.</p>
+      <div class="shape-edit-confirm-actions">
+        <button class="btn-primary" onclick="window.confirmShapeEdit()">موافق</button>
+        <button class="btn-light" onclick="window.cancelShapeEdit()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://js.puter.com/v2/"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
+
+  <script type="module">
+    import { firebaseConfig } from './firebase-config.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getFirestore, doc, setDoc, getDocs, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    const firebaseApp = initializeApp(firebaseConfig);
+    const db = getFirestore(firebaseApp);
+
+    let map = L.map('map', { zoomControl: true }).setView([31.9454, 35.2338], 11);
+    setTimeout(() => { try { map.pm && map.pm.setGlobalOptions({ pmIgnore: false }); } catch (e) { } }, 0);
+
+    const grayCanvas = L.tileLayer(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 18, attribution: '&copy; Esri' }
+    ).addTo(map);
+
+    const imagery = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: '&copy; Esri' }
+    );
+
+    L.control.layers({
+      "Gray Canvas": grayCanvas,
+      "Satellite": imagery
+    }).addTo(map);
+
+    let zoneData = {};
+    let originalGeoJSON = null;
+    let activeGeoJSON = null;
+    let allFeatures = [];
+    let filteredFeatures = [];
+    let geoLayer = null;
+    let allFeatureLayers = [];
+    let editMode = false;
+    let userRole = null; // 'admin' or 'engineer'
+    let isRemoteSyncing = false;
+    let unsubscribeZoneUpdates = null;
+    let governoratesLayer = null;
+    let governoratesLabelsLayer = null;
+
+    let globalEditIsolation = false;
+
+
+    let suppressZoneHover = false;
+    let suppressGovernorateHover = false;
+    let suppressZonePopups = false;
+    let suppressGovernoratePopups = false;
+
+    let statisticsChart = null;
+    let editToolbarInstance = null;
+    let currentEditLayerType = null;
+    let editableZonesGroup = L.featureGroup().addTo(map);
+    let editableGovernoratesGroup = L.featureGroup().addTo(map);
+    let shapeEditArmed = false;
+    let activeEditedLayer = null;
+    let pendingShapeEditType = null;
+    let activeEditOverlay = null;
+    let activeSourceLayer = null;
+    let renderEditSilentMode = false;
+
+
+    function disableLayerInteractionsForEditing(layer) {
+      if (!layer) return;
+      try {
+        layer.closePopup && layer.closePopup();
+        // tooltip disabled
+        try { } catch (e) { }
+      } catch (e) { }
+      try {
+        if (layer.off) {
+          if (layer.__popupClickHandler) layer.off('click', layer.__popupClickHandler);
+          if (layer.__hoverInHandler) layer.off('mouseover', layer.__hoverInHandler);
+          if (layer.__hoverOutHandler) layer.off('mouseout', layer.__hoverOutHandler);
+        }
+      } catch (e) { }
+      try {
+        layer.options = layer.options || {};
+        layer.options.interactive = false;
+        if (layer._path) layer._path.style.pointerEvents = 'none';
+      } catch (e) { }
+    }
+
+    function enableLayerOnlyForEditing(layer) {
+      if (!layer) return;
+      try {
+        layer.options = layer.options || {};
+        layer.options.interactive = true;
+        if (layer._path) layer._path.style.pointerEvents = 'auto';
+      } catch (e) { }
+    }
+
+    function restoreLayerInteractionsAfterEditing(layer, kind = 'zones') {
+      if (!layer) return;
+      try {
+        layer.options = layer.options || {};
+        layer.options.interactive = true;
+        if (layer._path) layer._path.style.pointerEvents = 'auto';
+      } catch (e) { }
+      try {
+        if (layer.__hoverInHandler) layer.on('mouseover', layer.__hoverInHandler);
+        if (layer.__hoverOutHandler) layer.on('mouseout', layer.__hoverOutHandler);
+        if (layer.__popupClickHandler) layer.on('click', layer.__popupClickHandler);
+      } catch (e) { }
+      try {
+        if (kind === 'zones' && layer.feature?.properties?.zone_code) {
+          if (!layer.getPopup || !layer.getPopup()) {
+            layer.bindPopup(() => popupHtml(layer.feature.properties));
+          }
+          if (!layer.getTooltip || !layer.getTooltip()) {
+            layer.bindTooltip('', { sticky: true, direction: 'top', opacity: 0.9 });
+          }
+        }
+      } catch (e) { }
+    }
+
+    function isolateShapeEditMode(type) {
+      const zoneTargets = allFeatureLayers || [];
+      const governorateTargets = governoratesLayer ? governoratesLayer.getLayers() : [];
+
+      suppressZoneHover = true;
+      suppressGovernorateHover = true;
+      suppressZonePopups = true;
+      suppressGovernoratePopups = true;
+
+      if (type === 'governorates') {
+        zoneTargets.forEach(layer => {
+          disableLayerInteractionsForEditing(layer);
+          try { layer.setStyle({ ...getStyle(layer.feature, false), fillOpacity: 0.08, opacity: 0.25 }); } catch (e) { }
+        });
+
+        governorateTargets.forEach(layer => {
+          disableLayerInteractionsForEditing(layer);
+          enableLayerOnlyForEditing(layer);
+          try { layer.setStyle({ color: '#18354a', weight: 3, fillColor: '#18354a', fillOpacity: 0.14, opacity: 1, dashArray: null }); } catch (e) { }
+        });
+      } else if (type === 'zones') {
+        governorateTargets.forEach(layer => {
+          disableLayerInteractionsForEditing(layer);
+          try { layer.setStyle({ color: '#18354a', weight: 2, fill: false, opacity: 0.18, dashArray: '6 4' }); } catch (e) { }
+        });
+
+        zoneTargets.forEach(layer => {
+          disableLayerInteractionsForEditing(layer);
+          enableLayerOnlyForEditing(layer);
+          try { layer.setStyle({ ...getStyle(layer.feature, false), fillOpacity: 0.22, opacity: 1 }); } catch (e) { }
+        });
+      }
+
+      if (governoratesLabelsLayer) {
+        try {
+          if (map.hasLayer(governoratesLabelsLayer)) map.removeLayer(governoratesLabelsLayer);
+        } catch (e) { }
+      }
+    }
+
+    function restoreAfterShapeEditIsolation() {
+      const zoneTargets = allFeatureLayers || [];
+      const governorateTargets = governoratesLayer ? governoratesLayer.getLayers() : [];
+
+      suppressZoneHover = false;
+      suppressGovernorateHover = false;
+      suppressZonePopups = false;
+      suppressGovernoratePopups = false;
+
+      zoneTargets.forEach(layer => {
+        restoreLayerInteractionsAfterEditing(layer, 'zones');
+        try { layer.setStyle(getStyle(layer.feature, false)); } catch (e) { }
+      });
+
+      governorateTargets.forEach(layer => {
+        restoreLayerInteractionsAfterEditing(layer, 'governorates');
+        try { layer.setStyle({ color: '#18354a', weight: 3, fill: false, opacity: 0.9, dashArray: '6 4' }); } catch (e) { }
+      });
+
+      if (governoratesLabelsLayer) {
+        try {
+          if (!map.hasLayer(governoratesLabelsLayer)) governoratesLabelsLayer.addTo(map);
+        } catch (e) { }
+      }
+    }
+
+
+    function applyGlobalEditIsolation() {
+      globalEditIsolation = true;
+      suppressZoneHover = true;
+      suppressGovernorateHover = true;
+      suppressZonePopups = true;
+      suppressGovernoratePopups = true;
+
+      try { map.closePopup && map.closePopup(); } catch (e) { }
+
+      const zoneTargets = allFeatureLayers || [];
+      zoneTargets.forEach(layer => {
+        try {
+          layer.closePopup && layer.closePopup();
+          // tooltip disabled
+          try { } catch (e) { }
+          if (layer.unbindPopup && layer.getPopup && layer.getPopup()) layer.unbindPopup();
+          // tooltip disabled
+          if (layer.off) {
+            if (layer.__popupClickHandler) layer.off('click', layer.__popupClickHandler);
+            if (layer.__hoverInHandler) layer.off('mouseover', layer.__hoverInHandler);
+            if (layer.__hoverOutHandler) layer.off('mouseout', layer.__hoverOutHandler);
+          }
+          layer.options = layer.options || {};
+          layer.options.interactive = false;
+          if (layer._path) layer._path.style.pointerEvents = 'none';
+        } catch (e) { }
+      });
+
+      const governorateTargets = governoratesLayer ? governoratesLayer.getLayers() : [];
+      governorateTargets.forEach(layer => {
+        try {
+          layer.closePopup && layer.closePopup();
+          // tooltip disabled
+          try { } catch (e) { }
+          if (layer.off) {
+            if (layer.__popupClickHandler) layer.off('click', layer.__popupClickHandler);
+            if (layer.__hoverInHandler) layer.off('mouseover', layer.__hoverInHandler);
+            if (layer.__hoverOutHandler) layer.off('mouseout', layer.__hoverOutHandler);
+          }
+          layer.options = layer.options || {};
+          layer.options.interactive = false;
+          if (layer._path) layer._path.style.pointerEvents = 'none';
+        } catch (e) { }
+      });
+
+      if (governoratesLabelsLayer) {
+        try { if (map.hasLayer(governoratesLabelsLayer)) map.removeLayer(governoratesLabelsLayer); } catch (e) { }
+      }
+    }
+
+    function releaseGlobalEditIsolation() {
+      globalEditIsolation = false;
+      suppressZoneHover = false;
+      suppressGovernorateHover = false;
+      suppressZonePopups = false;
+      suppressGovernoratePopups = false;
+
+      const zoneTargets = allFeatureLayers || [];
+      zoneTargets.forEach(layer => {
+        try {
+          layer.options = layer.options || {};
+          layer.options.interactive = true;
+          if (layer._path) layer._path.style.pointerEvents = 'auto';
+          if (!layer.getPopup || !layer.getPopup()) layer.bindPopup(() => popupHtml(layer.feature.properties));
+          // tooltip disabled
+          if (layer.__hoverInHandler) layer.on('mouseover', layer.__hoverInHandler);
+          if (layer.__hoverOutHandler) layer.on('mouseout', layer.__hoverOutHandler);
+          if (layer.__popupClickHandler) layer.on('click', layer.__popupClickHandler);
+        } catch (e) { }
+      });
+
+      const governorateTargets = governoratesLayer ? governoratesLayer.getLayers() : [];
+      governorateTargets.forEach(layer => {
+        try {
+          layer.options = layer.options || {};
+          layer.options.interactive = true;
+          if (layer._path) layer._path.style.pointerEvents = 'auto';
+          if (layer.__hoverInHandler) layer.on('mouseover', layer.__hoverInHandler);
+          if (layer.__hoverOutHandler) layer.on('mouseout', layer.__hoverOutHandler);
+          if (layer.__popupClickHandler) layer.on('click', layer.__popupClickHandler);
+        } catch (e) { }
+      });
+
+      if (governoratesLabelsLayer) {
+        try { if (!map.hasLayer(governoratesLabelsLayer)) governoratesLabelsLayer.addTo(map); } catch (e) { }
+      }
+    }
+
+    function activateEditingTargetOnly(type) {
+      // intentionally no-op in simplified edit flow
+    }
+
+
+    function normalizeStatus(value) {
+      const s = String(value || '').trim();
+      if (!s || s === 'غير محدد' || s === 'منتهية') return 'تم الانتهاء';
+      return s;
+    }
+
+    function safeNum(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+
+    async function initGovernoratesLayer() {
+      try {
+        const response = await fetch("./gov.json");
+        if (!response.ok) throw new Error('gov.json not found');
+        const govData = await response.json();
+
+        if (governoratesLayer) map.removeLayer(governoratesLayer);
+        if (governoratesLabelsLayer) map.removeLayer(governoratesLabelsLayer);
+
+        governoratesLayer = L.geoJSON(govData, {
+          style: {
+            color: '#18354a',
+            weight: 3,
+            fill: false,
+            opacity: 0.9,
+            dashArray: '6 4'
+          },
+          onEachFeature: function (feature, layer) {
+            layer.options = layer.options || {};
+            layer.options.pmIgnore = false;
+            try {
+              if (layer.pm && layer.pm.setOptions) {
+                layer.pm.setOptions({
+                  allowSelfIntersection: false,
+                  snappable: false,
+                  draggable: false
+                });
+              }
+            } catch (e) { }
+
+            layer.__popupClickHandler = function (e) {
+              try {
+                if (shapeEditArmed && currentEditLayerType === 'governorates') {
+                  if (e && e.originalEvent) { L.DomEvent.stopPropagation(e.originalEvent); }
+                  activateSingleLayerEditing(layer, 'governorates');
+                  return;
+                }
+                if (globalEditIsolation || suppressGovernoratePopups || currentEditLayerType) return;
+                map.flyToBounds(layer.getBounds(), {
+                  padding: [30, 30],
+                  duration: 0.8
+                });
+              } catch (err) {
+                console.error(err);
+                showNotice('error', 'تعذر فتح المحافظة', 'حدث خطأ أثناء معالجة الضغط على المحافظة.');
+              }
+            };
+            layer.__hoverInHandler = function () {
+              if (suppressGovernorateHover || shapeEditArmed) return;
+              layer.setStyle({ weight: 4, opacity: 1 });
+            };
+            layer.__hoverOutHandler = function () {
+              if (suppressGovernorateHover || shapeEditArmed) return;
+              governoratesLayer.resetStyle(layer);
+            };
+            layer.on('click', layer.__popupClickHandler);
+            layer.on('mouseover', layer.__hoverInHandler);
+            layer.on('mouseout', layer.__hoverOutHandler);
+          },
+          interactive: true
+        });
+
+        governoratesLabelsLayer = L.layerGroup();
+        govData.features.forEach(feature => {
+          const label = feature.properties?.name || feature.properties?.Name_Gov || 'محافظة';
+          const layer = L.geoJSON(feature);
+          const center = layer.getBounds().getCenter();
+          const marker = L.marker(center, {
+            interactive: true,
+            icon: L.divIcon({
+              className: 'gov-label',
+              html: label,
+              iconSize: null
+            })
+          });
+          governoratesLabelsLayer.addLayer(marker);
+        });
+
+        governoratesLayer.addTo(map);
+        governoratesLabelsLayer.addTo(map);
+        editableGovernoratesGroup.clearLayers();
+        governoratesLayer.eachLayer(layer => {
+          if (layer.feature && layer.feature.geometry && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon')) {
+            editableGovernoratesGroup.addLayer(layer);
+          }
+        });
+
+        try {
+          L.control.layers(null, {
+            'حدود المحافظات': governoratesLayer,
+            'أسماء المحافظات': governoratesLabelsLayer
+          }, { collapsed: true, position: 'topright' }).addTo(map);
+        } catch (e) {
+          console.warn('Governorates overlays control not added', e);
+        }
+      } catch (e) {
+        console.warn('تخطي تحميل طبقة المحافظات:', e.message);
+      }
+    }
+
+
+
+    const DEFAULT_EDIT_PASSWORD = '9876543210';
+    function encodePassword(raw) {
+      return Array.from(String(raw || '')).map(c => String.fromCharCode(c.charCodeAt(0) + 5)).join('');
+    }
+    function getSavedPasswordHash() {
+      return localStorage.getItem('dashboard_edit_password_hash') || encodePassword(DEFAULT_EDIT_PASSWORD);
+    }
+
+    function openAuthModal() {
+      document.getElementById('authModal').classList.add('active');
+      document.getElementById('authPassword').value = '';
+      document.getElementById('authError').textContent = '';
+      setTimeout(() => document.getElementById('authPassword').focus(), 60);
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.remove('active');
+    }
+
+
+    function openChangePasswordModal() {
+      document.getElementById('changePasswordModal').classList.add('active');
+      document.getElementById('currentPasswordInput').value = '';
+      document.getElementById('newPasswordInput').value = '';
+      document.getElementById('confirmPasswordInput').value = '';
+      document.getElementById('changePasswordError').textContent = '';
+    }
+    function closeChangePasswordModal() {
+      document.getElementById('changePasswordModal').classList.remove('active');
+    }
+    function submitPasswordChange() {
+      const currentVal = document.getElementById('currentPasswordInput').value.trim();
+      const newVal = document.getElementById('newPasswordInput').value.trim();
+      const confirmVal = document.getElementById('confirmPasswordInput').value.trim();
+      const errorEl = document.getElementById('changePasswordError');
+
+      if (encodePassword(currentVal) !== getSavedPasswordHash()) {
+        errorEl.textContent = 'كلمة المرور الحالية غير صحيحة.';
+        return;
+      }
+      if (newVal.length < 6) {
+        errorEl.textContent = 'كلمة المرور الجديدة يجب أن تكون 6 خانات أو أكثر.';
+        return;
+      }
+      if (newVal !== confirmVal) {
+        errorEl.textContent = 'تأكيد كلمة المرور غير مطابق.';
+        return;
+      }
+
+      localStorage.setItem('dashboard_edit_password_hash', encodePassword(newVal));
+      closeChangePasswordModal();
+      showNotice('success', 'تم تغيير كلمة المرور', 'سيتم اعتماد كلمة المرور الجديدة من الآن.');
+    }
+    function showWelcomeToast(role = 'admin') {
+      const toast = document.getElementById('welcomeToast');
+      const title = toast.querySelector('strong');
+      if (role === 'engineer') {
+        title.textContent = 'أهلاً بك يا بشمهندس، تم تفعيل وضع التعديل المحدود.';
+      } else {
+        title.textContent = 'أهلاً وسهلاً بك بشمهندس إبراهيم الجملة (أبو كريم)';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    function showNotice(type, title, sub = '') {
+      const toast = document.getElementById('noticeToast');
+      const titleEl = document.getElementById('noticeTitle');
+      const subEl = document.getElementById('noticeSub');
+
+      toast.classList.remove('success', 'error', 'show');
+      toast.classList.add(type === 'error' ? 'error' : 'success');
+      titleEl.textContent = title;
+      subEl.textContent = sub;
+
+      requestAnimationFrame(() => toast.classList.add('show'));
+      clearTimeout(window.__noticeTimer);
+      window.__noticeTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+
+    function showLogoEasterEgg() {
+      const egg = document.getElementById('logoEasterEgg');
+      if (!egg) return;
+      egg.classList.add('show');
+      setTimeout(() => egg.classList.remove('show'), 4000);
+    }
+
+
+    function submitEditPassword() {
+      const val = document.getElementById('authPassword').value.trim();
+      const err = document.getElementById('authError');
+      const hashedVal = encodePassword(val);
+
+      if (hashedVal === '958<:;>8:') {
+        err.textContent = '';
+        closeAuthModal();
+        showLogoEasterEgg();
+        return;
+      }
+
+      // Admin password check
+      if (hashedVal === getSavedPasswordHash()) {
+        userRole = 'admin';
+      }
+      // Engineer password check (123456789 -> 6789:;<=>)
+      else if (val === '123456789') {
+        userRole = 'engineer';
+      }
+      else {
+        err.textContent = 'كلمة السر غير صحيحة.';
+        return;
+      }
+
+      closeAuthModal();
+      editMode = true;
+      updateModeUI();
+      drawMap();
+      showWelcomeToast(userRole);
+    }
+
+
+    function hideLoader() {
+      const loader = document.getElementById('loaderOverlay');
+      if (loader) {
+        loader.classList.add('hidden');
+      }
+    }
+
+    function failLoader(message = 'تعذر تحميل بعض البيانات، لكن يمكن متابعة العمل.') {
+      hideLoader();
+      try {
+        showNotice('error', 'مشكلة في تحميل اللوحة', message);
+      } catch (e) { }
+    }
+
+    function applyZoneUpdatesToFeatures(snapshot) {
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const zoneCode = docSnap.id;
+        const feature = allFeatures.find(f => f.properties.zone_code === zoneCode);
+        if (feature) {
+          Object.assign(feature.properties, data);
+          feature.properties.type_statu = normalizeStatus(feature.properties.type_statu);
+        }
+      });
+    }
+
+    async function loadUpdatesFromFirestore() {
+      try {
+        const snapshot = await getDocs(collection(db, "zone_updates"));
+        applyZoneUpdatesToFeatures(snapshot);
+      } catch (e) {
+        console.warn("تعذر جلب التحديثات من Firebase:", e);
+      }
+    }
+
+    function startRealtimeUpdates() {
+      if (unsubscribeZoneUpdates) unsubscribeZoneUpdates();
+
+      unsubscribeZoneUpdates = onSnapshot(collection(db, "zone_updates"), (snapshot) => {
+        if (!allFeatures.length) return;
+
+        isRemoteSyncing = true;
+        applyZoneUpdatesToFeatures(snapshot);
+
+        updateLegend();
+        const gov = document.getElementById('filterGov')?.value || '';
+        const status = document.getElementById('filterStatus')?.value || '';
+        const work = document.getElementById('filterWork')?.value || '';
+        const area = document.getElementById('filterArea')?.value || '';
+        const text = document.getElementById('searchText')?.value?.trim().toLowerCase() || '';
+
+        filteredFeatures = allFeatures.filter(f => {
+          const p = f.properties;
+          const matchGov = !gov || p.governorat === gov;
+          const matchStatus = !status || normalizeStatus(p.type_statu) === status;
+          const matchWork = !work || String(p.work_id || '') === String(work);
+          const matchArea = !area || String(p.area_code || '') === String(area);
+          const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
+            .some(v => String(v || '').toLowerCase().includes(text));
+          return matchGov && matchStatus && matchWork && matchArea && matchText;
+        });
+
+        drawMap();
+        updateCards();
+        renderTables();
+        isRemoteSyncing = false;
+      });
+    }
+
+    function loadCsv() {
+      Papa.parse("./zones.csv", {
+        download: true,
+        header: true,
+        error: function () {
+          failLoader('تعذر تحميل ملف zones.csv');
+        },
+        complete: function (results) {
+          try {
+            results.data.forEach(row => {
+              if (row.zone_code) {
+                row["حالة الحصر"] = normalizeStatus(row["حالة الحصر"]);
+                zoneData[row.zone_code] = row;
+              }
+            });
+            loadGeo();
+          } catch (e) {
+            console.error(e);
+            failLoader('حدث خطأ أثناء قراءة zones.csv');
+          }
+        }
+      });
+    }
+
+    async function loadGeo() {
+      try {
+        const r = await fetch("./zone.geojson");
+        if (!r.ok) throw new Error("ملف zone.geojson غير موجود");
+        const data = await r.json();
+        originalGeoJSON = data;
+        activeGeoJSON = data;
+
+        allFeatures = data.features.map(feature => {
+          const code = feature.properties.zone_code;
+          const row = zoneData[code] || {};
+          const merged = JSON.parse(JSON.stringify(feature));
+          merged.properties = { ...feature.properties, ...row };
+          merged.properties.type_statu = normalizeStatus(merged.properties.type_statu);
+          return merged;
+        });
+
+        await loadUpdatesFromFirestore();
+        await initGovernoratesLayer();
+
+        if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+        filteredFeatures = allFeatures.slice();
+        populateFilters();
+        updateLegend();
+        drawMap();
+        updateCards();
+        renderTables();
+        updateModeUI();
+        startRealtimeUpdates();
+        hideLoader();
+      } catch (e) {
+        console.error("خطأ أثناء تحميل البيانات الجغرافية:", e);
+        failLoader("تعذر تحميل ملف الخريطة الأساسية (zone.geojson)، يرجى التأكد من وجوده.");
+      }
+    }
+
+    function populateSelect(id, values, allLabel) {
+      const el = document.getElementById(id);
+      const unique = [...new Set(values.filter(v => v !== undefined && v !== null && v !== ''))]
+        .sort((a, b) => String(a).localeCompare(String(b), 'ar'));
+      el.innerHTML = `<option value="">${allLabel}</option>` +
+        unique.map(v => `<option value="${String(v)}">${String(v)}</option>`).join('');
+    }
+
+    function populateFilters() {
+      populateSelect('filterGov', allFeatures.map(f => f.properties.governorat), 'كل المحافظات');
+      populateSelect('filterStatus', allFeatures.map(f => normalizeStatus(f.properties.type_statu)), 'كل الحالات');
+      populateSelect('filterWork', allFeatures.map(f => f.properties.work_id), 'كل مناطق العمل');
+      populateSelect('filterArea', allFeatures.map(f => f.properties.area_code), 'كل أكواد الحصر');
+    }
+
+    if (!window.__dynamicColors) {
+      window.__dynamicColors = {
+        'مناطق حصر جديدة': '#2f80ed',
+        'قيد الحصر': '#f2c94c',
+        'تم الانتهاء': '#27ae60'
+      };
+    }
+    const colorPalette = ['#9b59b6', '#e67e22', '#34495e', '#e74c3c', '#1abc9c', '#d35400', '#c0392b', '#16a085', '#8e44ad', '#2c3e50'];
+
+    function getFeatureColor(status) {
+      if (!window.__dynamicColors[status]) {
+        const idx = Object.keys(window.__dynamicColors).length % colorPalette.length;
+        window.__dynamicColors[status] = colorPalette[idx];
+      }
+      return window.__dynamicColors[status];
+    }
+
+    function updateLegend() {
+      const container = document.getElementById('mapLegend');
+      if (!container) return;
+      const uniqueStatuses = new Set();
+      allFeatures.forEach(f => {
+        const st = normalizeStatus(f.properties.type_statu);
+        if (st) uniqueStatuses.add(st);
+      });
+      let html = '';
+      Array.from(uniqueStatuses).sort().forEach(status => {
+        const color = getFeatureColor(status);
+        html += `<div class="legend-item"><input type="color" class="color-picker" value="${color}" onchange="window.updateStatusColor('${status}', this.value)" title="تغيير لون: ${status}"><span>${status}</span></div>`;
+      });
+      if (!html) html = '<div class="legend-item"><span>لا توجد بيانات</span></div>';
+      container.innerHTML = html;
+    }
+
+    window.updateStatusColor = function (status, newColor) {
+      window.__dynamicColors[status] = newColor;
+      drawMap();
+    };
+
+    function getStyle(feature, highlight = false) {
+      const status = normalizeStatus(feature.properties.type_statu);
+      const color = getFeatureColor(status);
+      return {
+        color: highlight ? '#f2994a' : color,
+        weight: highlight ? 4 : 2,
+        fillColor: color,
+        fillOpacity: highlight ? 0.38 : 0.24,
+        opacity: 1
+      };
+    }
+
+    function popupHtml(p) {
+      if (renderEditSilentMode || shapeEditArmed || currentEditLayerType) return '';
+
+      const counts = [
+        { l: 'لم يتم زيارته', v: safeNum(p.no_visited) },
+        { l: 'تم أعمال الحصر بالكامل', v: safeNum(p.complete) },
+        { l: 'الحصر الجزئي', v: safeNum(p.partial1) },
+        { l: 'رفض الحصر', v: safeNum(p.rejected1) },
+        { l: 'يحتاج لجنة فنية', v: safeNum(p.committe) }
+      ];
+
+      const basic = `
+    <div class="popup-title">${p.name_1 || "بدون اسم"}</div>
+    <div class="popup-grid">
+      <div class="popup-box"><strong>كود الزون</strong>${p.zone_code || "-"}</div>
+      <div class="popup-box"><strong>المحافظة</strong>${p.governorat || "-"}</div>
+      <div class="popup-box" style="grid-column: span 2;">
+        <strong>حالات المباني</strong>
+        <div style="font-size:10px; line-height:1.4; display:grid; grid-template-columns: 1fr 1fr; gap:2px 10px;">
+          ${counts.map(c => `<div>${c.l}: <b>${c.v}</b></div>`).join('')}
+        </div>
+      </div>
+      <div class="popup-box"><strong>إجمالي المباني</strong>${safeNum(p.unit_count)}</div>
+      <div class="popup-box"><strong>نسبة الإنجاز</strong>${Math.round(((safeNum(p.unit_count) - safeNum(p.no_visited)) / (safeNum(p.unit_count) || 1)) * 100)}%</div>
+    </div>
+    <button class="btn-primary" style="width:100%; margin-top:8px; padding:8px; border-radius:8px;" onclick="window.showZoneDetailsByCode('${p.zone_code}')">📊 عرض التفاصيل الجانبية</button>
+  `;
+
+      if (!editMode) {
+        return basic + (p.teams_coun || p.engineers_ ? `
+    <div class="popup-grid">
+      <div class="popup-box"><strong>عدد الفرق</strong>${Math.floor(p.teams_coun || 0)}</div>
+      <div class="popup-box"><strong>عدد المهندسين</strong>${Math.floor(p.engineers_ || 0)}</div>
+    </div>
+  ` : '');
+      }
+
+      if (userRole === 'engineer') {
+        return basic + `
+      <div class="edit-form">
+        <div class="field">
+          <label>حالة الحصر</label>
+          <select id="edit_status_${p.zone_code}">
+            <option value="مناطق حصر جديدة" ${normalizeStatus(p.type_statu) === 'مناطق حصر جديدة' ? 'selected' : ''}>مناطق حصر جديدة</option>
+            <option value="قيد الحصر" ${normalizeStatus(p.type_statu) === 'قيد الحصر' ? 'selected' : ''}>قيد الحصر</option>
+            <option value="تم الانتهاء" ${normalizeStatus(p.type_statu) === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>عدد الفرق</label>
+          <input type="number" id="edit_teams_${p.zone_code}" value="${p.teams_coun || 0}">
+        </div>
+
+        <div class="field">
+          <label>عدد المهندسين</label>
+          <input type="number" id="edit_engineers_${p.zone_code}" value="${p.engineers_ || 0}">
+        </div>
+
+        <button class="btn-success" onclick="window.saveZoneEdit('${p.zone_code}')">حفظ التعديل</button>
+      </div>
+    `;
+      }
+
+      return basic + `
+    <div class="edit-form">
+      <div class="field">
+        <label>حالة الحصر</label>
+        <select id="edit_status_${p.zone_code}">
+          <option value="مناطق حصر جديدة" ${normalizeStatus(p.type_statu) === 'مناطق حصر جديدة' ? 'selected' : ''}>مناطق حصر جديدة</option>
+          <option value="قيد الحصر" ${normalizeStatus(p.type_statu) === 'قيد الحصر' ? 'selected' : ''}>قيد الحصر</option>
+          <option value="تم الانتهاء" ${normalizeStatus(p.type_statu) === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>إجمالي المباني</label>
+        <input type="number" id="edit_total_${p.zone_code}" value="${safeNum(p.unit_count)}">
+      </div>
+
+      <div class="field">
+        <label>المباني المنجزة</label>
+        <input type="number" id="edit_done_${p.zone_code}" value="${safeNum(p["المباني المنجزة"])}">
+      </div>
+
+      <button class="btn-success" onclick="window.saveZoneEdit('${p.zone_code}')">حفظ التعديل</button>
+    </div>
+  `;
+    }
+
+    function updateMapGlow() {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+
+      const uniqueStatuses = new Set();
+      filteredFeatures.forEach(f => {
+        const st = normalizeStatus(f.properties.type_statu);
+        if (st) uniqueStatuses.add(st);
+      });
+
+      const colors = Array.from(uniqueStatuses).map(st => getFeatureColor(st));
+
+      // Reset previous state
+      mapEl.style.animation = 'none';
+      mapEl.style.boxShadow = ''; // Reset to default shadow from CSS
+      for (let i = 1; i <= 4; i++) {
+        mapEl.style.setProperty(`--glow-color-${i}`, 'transparent');
+      }
+
+      if (colors.length === 0) {
+        return;
+      }
+
+      const op = '7A'; // Transparency
+      let animationName = '';
+
+      if (colors.length >= 1) mapEl.style.setProperty('--glow-color-1', `${colors[0]}${op}`);
+      if (colors.length >= 2) mapEl.style.setProperty('--glow-color-2', `${colors[1]}${op}`);
+      if (colors.length >= 3) mapEl.style.setProperty('--glow-color-3', `${colors[2]}${op}`);
+      if (colors.length >= 4) mapEl.style.setProperty('--glow-color-4', `${colors[3] || colors[0]}${op}`);
+
+      if (colors.length === 1) animationName = 'pulseGlow1';
+      else if (colors.length === 2) animationName = 'pulseGlow2';
+      else if (colors.length === 3) animationName = 'pulseGlow3';
+      else if (colors.length >= 4) animationName = 'pulseGlow4';
+
+      if (animationName) {
+        mapEl.style.animation = `${animationName} 4s ease-in-out infinite`;
+      }
+    }
+
+    function drawMap(searchResults = []) {
+      const resultCodes = new Set(searchResults.map(f => f.properties.zone_code));
+      const filteredCodes = new Set(filteredFeatures.map(f => f.properties.zone_code));
+
+      if (!geoLayer) {
+        geoLayer = L.featureGroup().addTo(map);
+        allFeatureLayers = [];
+
+        L.geoJSON(
+          { type: "FeatureCollection", features: allFeatures },
+          {
+            style: feature => getStyle(feature, false),
+            onEachFeature: function (feature, layer) {
+              layer.options = layer.options || {};
+              layer.options.pmIgnore = false;
+
+              try {
+                if (layer.pm && layer.pm.setOptions) {
+                  layer.pm.setOptions({
+                    allowSelfIntersection: false,
+                    snappable: false,
+                    draggable: false
+                  });
+                }
+              } catch (e) { }
+
+              if (!renderEditSilentMode) {
+                // layer.bindPopup(() => popupHtml(layer.feature.properties)); // Disabled on click
+                layer.bindTooltip('', {
+                  sticky: true,
+                  direction: 'top',
+                  opacity: 1,
+                  className: 'custom-zone-tooltip'
+                });
+              }
+
+              layer.__hoverInHandler = function (e) {
+                try {
+                  if (renderEditSilentMode || suppressZoneHover || shapeEditArmed) return;
+                  layer.setStyle({ weight: 5, fillOpacity: 0.48, opacity: 1 });
+                  if (layer._path) layer._path.classList.add('zone-glow');
+                  layer.bringToFront();
+                } catch (err) { console.warn(err); }
+              };
+
+              layer.__hoverOutHandler = function (e) {
+                try {
+                  if (renderEditSilentMode || suppressZoneHover || shapeEditArmed) return;
+                  if (layer._path) layer._path.classList.remove('zone-glow');
+                  layer.setStyle(getStyle(layer.feature, layer.options.highlighted));
+                } catch (err) { console.warn(err); }
+              };
+
+              layer.__popupClickHandler = function (e) {
+                try {
+                  if (e) {
+                    try { L.DomEvent.stopPropagation(e); } catch (_) { }
+                  }
+                  if (shapeEditArmed && currentEditLayerType === 'zones') {
+                    activateSingleLayerEditing(layer, 'zones');
+                    return;
+                  }
+                  if (renderEditSilentMode || suppressZonePopups || currentEditLayerType) return;
+                  map.flyToBounds(layer.getBounds(), {
+                    padding: [40, 40],
+                    duration: 0.9,
+                    easeLinearity: 0.25
+                  });
+                  // Open sidebar directly on click as requested. NO popup.
+                  if (!renderEditSilentMode && !shapeEditArmed && !currentEditLayerType) {
+                    window.showZoneDetailsByCode(layer.feature.properties.zone_code);
+                  }
+                } catch (err) {
+                  console.error(err);
+                  showNotice('error', 'تعذر فتح العنصر', 'حدث خطأ أثناء معالجة الضغط على الزون.');
+                }
+              };
+
+              layer.on('mouseover', layer.__hoverInHandler);
+              layer.on('mouseout', layer.__hoverOutHandler);
+              layer.on('click', layer.__popupClickHandler);
+
+              allFeatureLayers.push(layer);
+            }
+          }
+        );
+      }
+
+      geoLayer.clearLayers();
+      const boundsGroup = L.featureGroup();
+      const searchGroup = L.featureGroup();
+
+      allFeatureLayers.forEach(layer => {
+        const code = layer.feature.properties.zone_code;
+        const isMatch = filteredCodes.has(code);
+        const isSearch = resultCodes.has(code);
+
+        layer.options.highlighted = isSearch;
+
+        if (isMatch) {
+          layer.setStyle(getStyle(layer.feature, isSearch));
+          const p = layer.feature.properties;
+          if (!shapeEditArmed && !suppressZonePopups && layer.getTooltip && layer.getTooltip()) {
+            layer.setTooltipContent(`
+              <div class="tooltip-title-special">${p.name_1 || "بدون اسم"}</div>
+              <div class="tooltip-row-special"><span style="color:#f2c94c">●</span> <span>لم يتم زيارته:</span> <span>${safeNum(p.no_visited)}</span></div>
+              <div class="tooltip-row-special"><span style="color:#27ae60">●</span> <span>منجز بالكامل:</span> <span>${safeNum(safeNum(p.unit_count) - safeNum(p.no_visited))}</span></div>
+              <div class="tooltip-row-special"><span style="color:#2f80ed">●</span> <span>حصر جزئي:</span> <span>${safeNum(p.partial1)}</span></div>
+              <div class="tooltip-row-special"><span style="color:#000000">●</span> <span>رفض الحصر:</span> <span>${safeNum(p.rejected1)}</span></div>
+              <div class="tooltip-row-special"><span style="color:#d9534f">●</span> <span>لجنة فنية:</span> <span>${safeNum(p.committe)}</span></div>
+              <div class="tooltip-row-special" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
+                <span>كود الزون:</span> <span>${p.zone_code || '-'}</span>
+              </div>
+            `);
+          }
+          geoLayer.addLayer(layer);
+          boundsGroup.addLayer(layer);
+          if (isSearch) searchGroup.addLayer(layer);
+        }
+      });
+
+      if (searchResults.length) {
+        const b = searchGroup.getBounds();
+        if (b.isValid()) map.flyToBounds(b, { padding: [35, 35], duration: 1.25 });
+      } else {
+        const bounds = boundsGroup.getBounds();
+        if (bounds.isValid() && Object.keys(boundsGroup._layers).length > 0) {
+          map.fitBounds(bounds, { padding: [20, 20] });
+        }
+      }
+
+      editableZonesGroup.clearLayers();
+      geoLayer.eachLayer(layer => {
+        if (layer.feature && layer.feature.geometry && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon')) {
+          editableZonesGroup.addLayer(layer);
+        }
+      });
+      updateMapGlow();
+    }
+
+
+    function animateCounter(elementId, endValue, suffix = '') {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const currentText = (el.textContent || '').replace(/,/g, '').replace('%', '').trim();
+      let startValue = parseFloat(currentText);
+      if (!Number.isFinite(startValue)) startValue = 0;
+      const duration = 700;
+      const startTime = performance.now();
+
+      function frame(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const value = startValue + (endValue - startValue) * progress;
+        if (suffix === '%') {
+          el.textContent = Math.round(value) + suffix;
+        } else {
+          el.textContent = Math.round(value).toLocaleString('en-US') + suffix;
+        }
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function updateMiniStats(remaining = 0) {
+      const remainingEl = document.getElementById('miniRemaining');
+      if (remainingEl) remainingEl.textContent = Number(remaining).toLocaleString('en-US');
+    }
+
+
+    function updateCards() {
+      const totalZones = filteredFeatures.length;
+      let newCount = 0, progressCount = 0, doneCount = 0, totalBuildings = 0, totalDone = 0;
+
+      filteredFeatures.forEach(f => {
+        const p = f.properties;
+        const status = normalizeStatus(p.type_statu);
+        const total = safeNum(p.total_all || p.unit_count);
+        const done = total - safeNum(p.no_visited);
+
+        if (status === 'مناطق حصر جديدة') newCount++;
+        else if (status === 'قيد الحصر') progressCount++;
+        else doneCount++;
+
+        totalBuildings += total;
+        totalDone += done;
+      });
+
+      const percent = totalBuildings ? Math.round((totalDone / totalBuildings) * 100) : 0;
+      const remaining = Math.max(totalBuildings - totalDone, 0);
+
+      animateCounter('cardTotalZones', totalZones);
+      animateCounter('cardNew', newCount);
+      animateCounter('cardProgress', progressCount);
+      animateCounter('cardDone', doneCount);
+      animateCounter('cardBuildings', totalBuildings);
+      animateCounter('cardPercent', percent, '%');
+
+      updateHeroProgress(totalDone, totalBuildings);
+      updateMiniStats(remaining);
+
+      const trendMap = {
+        cardNew: 'مستوى البداية',
+        cardProgress: 'نشاط ميداني',
+        cardDone: 'مستوى الإكمال',
+        cardBuildings: 'حمولة العمل',
+        cardTotalZones: 'التغطية الحالية',
+        cardPercent: 'الأداء الكلي'
+      };
+      Object.entries(trendMap).forEach(([id, txt]) => {
+        const card = document.getElementById(id)?.closest('.card');
+        if (card && !card.querySelector('.kpi-trend')) {
+          const div = document.createElement('div');
+          div.className = 'kpi-trend';
+          div.textContent = txt;
+          card.appendChild(div);
+        }
+      });
+    }
+
+    function animateValue(id, end) {
+      const el = document.getElementById(id);
+      const start = parseInt(String(el.textContent).replace(/,/g, '')) || 0;
+      const duration = 450;
+      const startTime = performance.now();
+
+      function step(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const value = Math.floor(start + (end - start) * progress);
+        el.textContent = value.toLocaleString('en-US');
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+
+
+    function updateHeroProgress(totalDone, totalBuildings) {
+      const percent = totalBuildings ? Math.round((totalDone / totalBuildings) * 100) : 0;
+      animateCounter('heroProgressValue', percent, '%');
+
+      const fill = document.getElementById('heroProgressFill');
+      fill.style.width = percent + '%';
+
+      // تدرج لوني مدمج يتغير بسلاسة حسب النسبة
+      // من 0 (أحمر) مروراً بالبرتقالي والأصفر والأخضر إلى 200 (أزرق سماوي/أخضر مزرق)
+      const baseHue = Math.floor((percent / 100) * 200);
+      const color1 = `hsl(${baseHue}, 85%, 55%)`;
+      const color2 = `hsl(${baseHue + 40}, 90%, 45%)`; // دمج لون متقارب لتأثير التدرج المستمر
+
+      fill.style.background = `linear-gradient(90deg, ${color1}, ${color2}, ${color1})`;
+      fill.style.backgroundSize = '200% 100%';
+
+      // تمرير اللون للـ CSS ليعمل النبض (Pulse) بناءً عليه
+      fill.style.setProperty('--glow-color', `hsla(${baseHue}, 85%, 55%, 0.75)`);
+
+      document.getElementById('heroProgressCaption').textContent = `${totalDone.toLocaleString('en-US')} منجز / ${totalBuildings.toLocaleString('en-US')} إجمالي`;
+    }
+
+    function exportReports() {
+      const statusData = [["حالة الحصر", "عدد المناطق", "إجمالي المباني", "المباني المنجزة", "نسبة الإنجاز (%)"]];
+      document.querySelectorAll('#statusTable tbody tr').forEach(tr => {
+        statusData.push(Array.from(tr.querySelectorAll('td')).map(td => td.innerText));
+      });
+
+      const govData = [["المحافظة", "عدد المناطق", "إجمالي المباني", "المباني المنجزة", "نسبة الإنجاز (%)"]];
+      document.querySelectorAll('#govTable tbody tr').forEach(tr => {
+        govData.push(Array.from(tr.querySelectorAll('td')).map(td => td.innerText));
+      });
+
+      if (window.XLSX) {
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.aoa_to_sheet(statusData);
+        const ws2 = XLSX.utils.aoa_to_sheet(govData);
+        XLSX.utils.book_append_sheet(wb, ws1, "حسب حالة الحصر");
+        XLSX.utils.book_append_sheet(wb, ws2, "حسب المحافظة");
+        XLSX.writeFile(wb, "gaza_dashboard_reports.xlsx");
+      } else {
+        let csv = '\ufeff';
+        csv += 'إحصائيات حسب حالة الحصر\n';
+        statusData.forEach(r => { csv += r.join(',') + '\n'; });
+        csv += '\nإحصائيات حسب المحافظة\n';
+        govData.forEach(r => { csv += r.join(',') + '\n'; });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'gaza_dashboard_reports.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function renderTables() {
+      const statusMap = new Map();
+      const govMap = new Map();
+
+      filteredFeatures.forEach(f => {
+        const p = f.properties;
+        const status = normalizeStatus(p.type_statu);
+        const gov = p.governorat || "غير محدد";
+        const total = safeNum(p.total_all || p.unit_count);
+        const done = total - safeNum(p.no_visited); // Standardized metric
+
+        if (!statusMap.has(status)) {
+          statusMap.set(status, { name: status, zones: 0, total: 0, done: 0 });
+        }
+        const s = statusMap.get(status);
+        s.zones += 1;
+        s.total += total;
+        s.done += done;
+
+        if (!govMap.has(gov)) {
+          govMap.set(gov, { name: gov, zones: 0, total: 0, done: 0 });
+        }
+        const g = govMap.get(gov);
+        g.zones += 1;
+        g.total += total;
+        g.done += done;
+      });
+
+      const statusOrder = ['مناطق حصر جديدة', 'قيد الحصر', 'تم الانتهاء'];
+      const statusRows = statusOrder
+        .filter(name => statusMap.has(name))
+        .map(name => statusMap.get(name));
+
+      const govRows = Array.from(govMap.values())
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ar'));
+
+      const statusBody = document.querySelector('#statusTable tbody');
+      const govBody = document.querySelector('#govTable tbody');
+
+      statusBody.innerHTML = statusRows.map(row => {
+        const percent = row.total ? ((row.done / row.total) * 100).toFixed(2) : '0.00';
+        return `<tr>
+      <td>${row.name}</td>
+      <td>${row.zones.toLocaleString('en-US')}</td>
+      <td>${row.total.toLocaleString('en-US')}</td>
+      <td>${row.done.toLocaleString('en-US')}</td>
+      <td>${percent}</td>
+    </tr>`;
+      }).join('');
+
+      govBody.innerHTML = govRows.map(row => {
+        const percent = row.total ? ((row.done / row.total) * 100).toFixed(2) : '0.00';
+        return `<tr>
+      <td>${row.name}</td>
+      <td>${row.zones.toLocaleString('en-US')}</td>
+      <td>${row.total.toLocaleString('en-US')}</td>
+      <td>${row.done.toLocaleString('en-US')}</td>
+      <td>${percent}</td>
+    </tr>`;
+      }).join('');
+    }
+
+    function applyFilters() {
+      const gov = document.getElementById('filterGov').value;
+      const status = document.getElementById('filterStatus').value;
+      const work = document.getElementById('filterWork').value;
+      const area = document.getElementById('filterArea').value;
+      const text = document.getElementById('searchText').value.trim().toLowerCase();
+
+      filteredFeatures = allFeatures.filter(f => {
+        const p = f.properties;
+        const matchGov = !gov || p.governorat === gov;
+        const matchStatus = !status || normalizeStatus(p.type_statu) === status;
+        const matchWork = !work || String(p.work_id || '') === String(work);
+        const matchArea = !area || String(p.area_code || '') === String(area);
+        const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
+          .some(v => String(v || '').toLowerCase().includes(text));
+        return matchGov && matchStatus && matchWork && matchArea && matchText;
+      });
+
+      drawMap();
+      updateCards();
+      renderTables();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterGov').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterWork').value = '';
+      document.getElementById('filterArea').value = '';
+      document.getElementById('searchText').value = '';
+      filteredFeatures = allFeatures.slice();
+      drawMap();
+      updateCards();
+      renderTables();
+    }
+
+    function runSearch() {
+      const text = document.getElementById('searchText').value.trim().toLowerCase();
+      if (!text) { applyFilters(); return; }
+
+      const results = filteredFeatures.filter(f => {
+        const p = f.properties;
+        return [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
+          .some(v => String(v || '').toLowerCase().includes(text));
+      });
+
+      drawMap(results);
+
+      if (results.length === 1) {
+        const target = results[0].properties.zone_code;
+        geoLayer.eachLayer(layer => {
+          if (layer.feature.properties.zone_code === target) {
+            setTimeout(() => layer.openPopup(), 280);
+          }
+        });
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('searchText').value = '';
+      applyFilters();
+    }
+
+    function resetMapView() {
+      document.getElementById('filterGov').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterWork').value = '';
+      document.getElementById('filterArea').value = '';
+      document.getElementById('searchText').value = '';
+      filteredFeatures = allFeatures.slice();
+      drawMap();
+      updateCards();
+      if (geoLayer) {
+        const bounds = geoLayer.getBounds();
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { padding: [20, 20], duration: 1.0 });
+        }
+      }
+    }
+
+    function toggleEditMode() {
+      if (!editMode) {
+        openAuthModal();
+        return;
+      }
+      try {
+        stopShapeEditingSession && stopShapeEditingSession();
+      } catch (e) { }
+      editMode = false;
+      userRole = null;
+      releaseGlobalEditIsolation();
+      updateModeUI();
+      drawMap();
+    }
+
+    function updateModeUI() {
+      const btn = document.getElementById('editToggleBtn');
+      const modeInline = document.getElementById('modeInline');
+      const dataManagementPanel = document.getElementById('dataManagementPanel');
+      const chartBuilderPanel = document.getElementById('chartBuilderPanel');
+      const editShapePanel = document.getElementById('editShapePanel');
+      const passwordManagePanel = document.getElementById('passwordManagePanel');
+
+      if (editMode) {
+        btn.textContent = '👁️ View Mode';
+        btn.classList.remove('btn-light');
+        btn.classList.add('btn-success');
+        modeInline.textContent = userRole === 'engineer' ? 'وضع التعديل المحدود' : 'وضع التعديل مفعل';
+        if (dataManagementPanel) dataManagementPanel.style.display = userRole === 'admin' ? 'block' : 'none';
+        if (chartBuilderPanel) chartBuilderPanel.classList.add('active');
+        if (editShapePanel) editShapePanel.classList.add('active');
+        if (passwordManagePanel) passwordManagePanel.classList.add('active');
+      } else {
+        btn.textContent = '✏️ Edit Mode';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-light');
+        modeInline.textContent = 'وضع العرض فقط';
+        if (dataManagementPanel) dataManagementPanel.style.display = 'none';
+        if (chartBuilderPanel) chartBuilderPanel.classList.remove('active');
+        if (editShapePanel) editShapePanel.classList.remove('active');
+        if (passwordManagePanel) passwordManagePanel.classList.remove('active');
+        stopShapeEdit();
+      }
+    }
+
+    window.saveZoneEdit = async function (zoneCode) {
+      try {
+        const targetAll = allFeatures.find(f => f.properties.zone_code === zoneCode);
+        if (!targetAll) return;
+
+        const updateData = {
+          "حالة الحصر": normalizeStatus(document.getElementById(`edit_status_${zoneCode}`).value),
+          updatedAt: new Date().toISOString()
+        };
+
+        if (userRole === 'engineer') {
+          updateData["عدد الفرق"] = safeNum(document.getElementById(`edit_teams_${zoneCode}`).value);
+          updateData["عدد المهندسين"] = safeNum(document.getElementById(`edit_engineers_${zoneCode}`).value);
+        } else {
+          const total = safeNum(document.getElementById(`edit_total_${zoneCode}`).value);
+          const done = safeNum(document.getElementById(`edit_done_${zoneCode}`).value);
+          const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+
+          updateData["إجمالي المباني"] = total;
+          updateData["المباني المنجزة"] = done;
+          updateData["نسبة الإنجاز %"] = progress;
+        }
+
+        await setDoc(
+          doc(db, "zone_updates", zoneCode),
+          updateData,
+          { merge: true }
+        );
+
+        // Update local data
+        Object.assign(targetAll.properties, updateData);
+
+        filteredFeatures = allFeatures.filter(f => {
+          const gov = document.getElementById('filterGov').value;
+          const filterStatus = document.getElementById('filterStatus').value;
+          const work = document.getElementById('filterWork').value;
+          const area = document.getElementById('filterArea').value;
+          const text = document.getElementById('searchText').value.trim().toLowerCase();
+          const p = f.properties;
+
+          const matchGov = !gov || p.governorat === gov;
+          const matchStatus = !filterStatus || normalizeStatus(p.type_statu) === filterStatus;
+          const matchWork = !work || String(p.work_id || '') === String(work);
+          const matchArea = !area || String(p.area_code || '') === String(area);
+          const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
+            .some(v => String(v || '').toLowerCase().includes(text));
+
+          return matchGov && matchStatus && matchWork && matchArea && matchText;
+        });
+
+        drawMap();
+        updateCards();
+        renderTables();
+        showNotice('success', 'تم حفظ التعديل بنجاح', 'تمت مزامنة البيانات بين الأجهزة.');
+      } catch (err) {
+        console.error(err);
+        showNotice('error', 'تعذر حفظ التعديل', 'تحقق من الاتصال أو إعدادات Firestore.');
+      }
+    }
+
+
+    function toggleSidebar() {
+      const app = document.querySelector('.app');
+      const btn = document.getElementById('sidebarToggleBtn');
+      app.classList.toggle('sidebar-collapsed');
+      const collapsed = app.classList.contains('sidebar-collapsed');
+      btn.textContent = collapsed ? 'إظهار القائمة الجانبية' : 'إخفاء القائمة الجانبية';
+      setTimeout(() => { try { map.invalidateSize(); } catch (e) { } }, 380);
+    }
+
+    function collectChartData(groupBy, metric) {
+      const buckets = new Map();
+      filteredFeatures.forEach(f => {
+        const p = f.properties;
+        const key = groupBy === 'gov' ? (p.governorat || 'غير محدد') : normalizeStatus(p.type_statu);
+        if (!buckets.has(key)) buckets.set(key, { zones: 0, total: 0, done: 0 });
+        const bucket = buckets.get(key);
+        bucket.zones += 1;
+        bucket.total += safeNum(p.total_all || p.unit_count);
+        bucket.done += (safeNum(p.total_all || p.unit_count) - safeNum(p.no_visited)); // Standardized metric
+      });
+
+      const labels = Array.from(buckets.keys());
+      const values = labels.map(label => {
+        const item = buckets.get(label);
+        if (metric === 'zones') return item.zones;
+        if (metric === 'total') return item.total;
+        if (metric === 'done') return item.done;
+        return item.total ? Number(((item.done / item.total) * 100).toFixed(2)) : 0;
+      });
+      return { labels, values };
+    }
+
+    function buildStatisticsChart() {
+      const type = document.getElementById('chartTypeSelect').value;
+      const groupBy = document.getElementById('chartGroupBySelect').value;
+      const metric = document.getElementById('chartMetricSelect').value;
+      const { labels, values } = collectChartData(groupBy, metric);
+      const section = document.getElementById('chartPreviewSection');
+      const title = document.getElementById('chartPreviewTitle');
+      const canvas = document.getElementById('statisticsChartCanvas');
+
+      if (statisticsChart) statisticsChart.destroy();
+
+      const colors = labels.map((label, index) => groupBy === 'status' ? getFeatureColor(label) : colorPalette[index % colorPalette.length]);
+      statisticsChart = new Chart(canvas.getContext('2d'), {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            label: 'الإحصائيات',
+            data: values,
+            backgroundColor: colors,
+            borderColor: colors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: type === 'pie' },
+            title: { display: false }
+          },
+          scales: type === 'bar' ? {
+            y: { beginAtZero: true }
+          } : {}
+        }
+      });
+
+      const groupLabel = groupBy === 'gov' ? 'المحافظة' : 'حالة الحصر';
+      const metricLabelMap = { zones: 'عدد المناطق', total: 'إجمالي المباني', done: 'المباني المنجزة', percent: 'نسبة الإنجاز' };
+      title.textContent = `${metricLabelMap[metric]} حسب ${groupLabel}`;
+      section.classList.add('active');
+      setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'end' }), 120);
+    }
+
+    function hideStatisticsChart() {
+      const section = document.getElementById('chartPreviewSection');
+      section.classList.remove('active');
+      if (statisticsChart) {
+        statisticsChart.destroy();
+        statisticsChart = null;
+      }
+    }
+
+
+    function hideSourceLayerForEditing(layer, type) {
+      if (!layer) return;
+      try {
+        if (layer._path) layer._path.style.pointerEvents = 'none';
+        if (type === 'zones') {
+          layer.setStyle({ ...getStyle(layer.feature, false), opacity: 0.05, fillOpacity: 0.02 });
+        } else {
+          layer.setStyle({ color: '#18354a', weight: 2, fillColor: '#18354a', opacity: 0.05, fillOpacity: 0.02, dashArray: null });
+        }
+      } catch (e) { }
+    }
+
+    function removeActiveEditOverlay() {
+      try {
+        if (activeEditOverlay) {
+          map.removeLayer(activeEditOverlay);
+        }
+      } catch (e) { }
+      activeEditOverlay = null;
+      activeSourceLayer = null;
+    }
+
+    function syncOverlayEditToSource() {
+      if (!activeEditedLayer || !activeSourceLayer) return;
+      try {
+        const editedGeo = activeEditedLayer.toGeoJSON();
+        activeSourceLayer.feature.geometry = editedGeo.geometry;
+        if (activeSourceLayer.setLatLngs && activeEditedLayer.getLatLngs) {
+          activeSourceLayer.setLatLngs(activeEditedLayer.getLatLngs());
+          if (activeSourceLayer.redraw) activeSourceLayer.redraw();
+        }
+      } catch (e) {
+        console.error('syncOverlayEditToSource error', e);
+      }
+    }
+
+    function openDedicatedEditOverlay(sourceLayer, type) {
+      if (!sourceLayer) return false;
+
+      try {
+        // clear previous overlay
+        if (activeEditedLayer) {
+          try {
+            if (activeEditedLayer.pm && activeEditedLayer.pm.enabled && activeEditedLayer.pm.enabled()) {
+              activeEditedLayer.pm.disable();
+            }
+          } catch (e) { }
+        }
+        removeActiveEditOverlay();
+
+        const geo = sourceLayer.toGeoJSON();
+        activeEditOverlay = L.geoJSON(geo, {
+          style: function () {
+            return type === 'zones'
+              ? { ...getStyle(sourceLayer.feature, true), fillOpacity: 0.30 }
+              : { color: '#f2994a', weight: 4, fillColor: '#f2994a', fillOpacity: 0.10, opacity: 1, dashArray: null };
+          },
+          pmIgnore: false,
+          interactive: true
+        }).addTo(map);
+
+        const editLayers = activeEditOverlay.getLayers();
+        if (!editLayers.length) return false;
+
+        const editLayer = editLayers[0];
+        activeSourceLayer = sourceLayer;
+        activeEditedLayer = editLayer;
+
+        hideSourceLayerForEditing(sourceLayer, type);
+
+        if (editLayer.pm && typeof editLayer.pm.enable === 'function') {
+          editLayer.pm.enable({
+            allowSelfIntersection: false,
+            snappable: false,
+            draggable: false
+          });
+          if (editLayer.bringToFront) editLayer.bringToFront();
+          return true;
+        }
+
+        return false;
+      } catch (err) {
+        console.error('openDedicatedEditOverlay error', err);
+        return false;
+      }
+    }
+
+
+    function getEditableGroupByType(type) {
+      return type === 'governorates' ? editableGovernoratesGroup : editableZonesGroup;
+    }
+
+    function setLayerPointerInteractivity(layer, enabled) {
+      if (!layer) return;
+      try {
+        layer.options = layer.options || {};
+        layer.options.interactive = !!enabled;
+        if (layer._path) {
+          layer._path.style.pointerEvents = enabled ? 'auto' : 'none';
+        }
+      } catch (e) { }
+    }
+
+    function getTargetLayersForShapeEdit(type) {
+      return type === 'governorates'
+        ? (governoratesLayer ? governoratesLayer.getLayers().filter(layer => layer.feature && layer.feature.geometry && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon')) : [])
+        : allFeatureLayers.filter(layer => layer.feature && layer.feature.geometry && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon'));
+    }
+
+
+    function setLayerInteractionSilence(layer, enabled) {
+      if (!layer) return;
+      try {
+        if (enabled) {
+          layer.closePopup && layer.closePopup();
+          // tooltip disabled
+          try { } catch (e) { }
+          if (layer.unbindPopup) layer.unbindPopup();
+          if (layer.unbindTooltip) layer.unbindTooltip();
+        } else {
+          if (layer.feature?.properties?.zone_code) {
+            if (!layer.getPopup || !layer.getPopup()) {
+              layer.bindPopup(() => popupHtml(layer.feature.properties));
+            }
+            if (!layer.getTooltip || !layer.getTooltip()) {
+              layer.bindTooltip('', { sticky: true, direction: 'top', opacity: 0.9 });
+            }
+          }
+        }
+      } catch (e) { }
+    }
+
+
+
+
+    function prepareTargetLayerForEditing(layer) {
+      if (!layer) return;
+      try {
+        layer.closePopup && layer.closePopup();
+        // tooltip disabled
+        try { } catch (e) { }
+      } catch (e) { }
+      try {
+        if (layer.off) {
+          if (layer.__popupClickHandler) layer.off('click', layer.__popupClickHandler);
+          if (layer.__hoverInHandler) layer.off('mouseover', layer.__hoverInHandler);
+          if (layer.__hoverOutHandler) layer.off('mouseout', layer.__hoverOutHandler);
+        }
+      } catch (e) { }
+      try {
+        if (layer.unbindPopup && layer.getPopup && layer.getPopup()) {
+          layer.unbindPopup();
+        }
+        if (layer.unbindTooltip && layer.getTooltip && layer.getTooltip()) {
+          layer.unbindTooltip();
+        }
+      } catch (e) { }
+      try {
+        layer.options = layer.options || {};
+        layer.options.interactive = true;
+        if (layer._path) layer._path.style.pointerEvents = 'auto';
+      } catch (e) { }
+    }
+
+    function disableLayerEditing(layer) {
+      if (!layer) return;
+      try {
+        if (layer.pm && layer.pm.enabled && layer.pm.enabled()) {
+          layer.pm.disable();
+        }
+      } catch (e) { }
+      try {
+        if (layer.editing && layer.editing.disable) {
+          layer.editing.disable();
+        }
+      } catch (e) { }
+      try {
+        if (layer.setStyle) {
+          if (layer.feature?.properties?.zone_code) {
+            layer.setStyle(getStyle(layer.feature, false));
+          } else {
+            layer.setStyle({ color: '#18354a', weight: 3, fill: false, opacity: 0.9, dashArray: '6 4' });
+          }
+        }
+      } catch (e) { }
+    }
+
+    function setShapeEditPresentation(enabled, type) {
+      try { map.closePopup && map.closePopup(); } catch (e) { }
+
+      suppressZoneHover = !!enabled;
+      suppressGovernorateHover = !!enabled;
+      suppressZonePopups = !!enabled;
+      suppressGovernoratePopups = !!enabled;
+
+      const zoneTargets = allFeatureLayers || [];
+      const governorateTargets = governoratesLayer ? governoratesLayer.getLayers() : [];
+
+      const allTargets = [...zoneTargets, ...governorateTargets];
+      allTargets.forEach(layer => {
+        try {
+          layer.closePopup && layer.closePopup();
+          // tooltip disabled
+          try { } catch (e) { }
+          if (enabled) {
+            if (layer.unbindPopup && layer.getPopup && layer.getPopup()) layer.unbindPopup();
+            // tooltip disabled
+          }
+        } catch (e) { }
+      });
+
+      if (enabled && type === 'zones') {
+        zoneTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'auto';
+            layer.setStyle({ ...getStyle(layer.feature, false), fillOpacity: 0.24, opacity: 1 });
+          } catch (e) { }
+        });
+        governorateTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'none';
+            layer.setStyle({ color: '#18354a', weight: 2, fill: false, opacity: 0.16, dashArray: '6 4' });
+          } catch (e) { }
+        });
+      } else if (enabled && type === 'governorates') {
+        zoneTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'none';
+            layer.setStyle({ ...getStyle(layer.feature, false), fillOpacity: 0.06, opacity: 0.25 });
+          } catch (e) { }
+        });
+        governorateTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'auto';
+            layer.setStyle({ color: '#18354a', weight: 3, fillColor: '#18354a', fillOpacity: 0.14, opacity: 1, dashArray: null });
+          } catch (e) { }
+        });
+      } else {
+        zoneTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'auto';
+          } catch (e) { }
+        });
+        governorateTargets.forEach(layer => {
+          try {
+            if (layer._path) layer._path.style.pointerEvents = 'auto';
+          } catch (e) { }
+        });
+      }
+
+      if (governoratesLabelsLayer) {
+        try {
+          if (enabled) {
+            if (map.hasLayer(governoratesLabelsLayer)) map.removeLayer(governoratesLabelsLayer);
+          } else {
+            if (!map.hasLayer(governoratesLabelsLayer)) governoratesLabelsLayer.addTo(map);
+          }
+        } catch (e) { }
+      }
+    }
+
+    function activateSingleLayerEditing(layer, type) {
+      if (!shapeEditArmed || currentEditLayerType !== type) return;
+
+      try {
+        const ok = openDedicatedEditOverlay(layer, type);
+        if (ok) {
+          showNotice('success', 'تم تفعيل التعديل', 'ظهرت نقاط الـ Vertex للشكل الذي ضغطت عليه فقط.');
+        } else {
+          showNotice('error', 'تعذر تفعيل التعديل', 'تعذر إنشاء طبقة تحرير مستقلة لهذا الشكل.');
+        }
+      } catch (err) {
+        console.error(err);
+        showNotice('error', 'تعذر تفعيل التعديل', 'حدث خطأ أثناء تشغيل طبقة التحرير المستقلة.');
+      }
+    }
+
+    function openShapeEditConfirmModal() {
+      const modal = document.getElementById('shapeEditConfirmModal');
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeShapeEditConfirmModal() {
+      const modal = document.getElementById('shapeEditConfirmModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    window.confirmShapeEdit = function () {
+      closeShapeEditConfirmModal();
+      if (!pendingShapeEditType) return;
+
+      stopShapeEdit(false);
+      currentEditLayerType = pendingShapeEditType;
+      pendingShapeEditType = null;
+
+      const layers = getTargetLayersForShapeEdit(currentEditLayerType);
+      if (!layers.length) {
+        showNotice('error', 'لا توجد عناصر قابلة للتعديل', 'تحقق من تحميل الطبقة أولًا.');
+        currentEditLayerType = null;
+        return;
+      }
+
+      shapeEditArmed = true;
+      activeEditedLayer = null;
+      renderEditSilentMode = true;
+
+      setShapeEditPresentation(true, currentEditLayerType);
+
+      if (geoLayer) {
+        map.removeLayer(geoLayer);
+        geoLayer = null;
+      }
+      allFeatureLayers = [];
+      drawMap();
+
+      showNotice('success', 'تم تجهيز وضع التعديل', 'تم إيقاف الهوفر والبوب أب بالكامل أثناء التعديل. اضغط على الزون المطلوب فقط لإظهار الـ Vertex.');
+    };
+
+    window.cancelShapeEdit = function () {
+      pendingShapeEditType = null;
+      closeShapeEditConfirmModal();
+      showNotice('success', 'تم إلغاء العملية', 'لم يتم تفعيل تعديل الشيب.');
+    };
+
+    function syncEditedLayerFeatures(type) {
+      const group = getEditableGroupByType(type);
+      if (type === 'zones') {
+        const editedByCode = {};
+        group.eachLayer(layer => {
+          const code = layer.feature?.properties?.zone_code;
+          if (code) {
+            editedByCode[code] = layer.toGeoJSON().geometry;
+          }
+        });
+        allFeatures.forEach(f => {
+          if (editedByCode[f.properties.zone_code]) {
+            f.geometry = editedByCode[f.properties.zone_code];
+          }
+        });
+        filteredFeatures = allFeatures.filter(f => {
+          const gov = document.getElementById('filterGov').value;
+          const status = document.getElementById('filterStatus').value;
+          const work = document.getElementById('filterWork').value;
+          const area = document.getElementById('filterArea').value;
+          const text = document.getElementById('searchText').value.trim().toLowerCase();
+          const p = f.properties;
+          const matchGov = !gov || p.governorat === gov;
+          const matchStatus = !status || normalizeStatus(p.type_statu) === status;
+          const matchWork = !work || String(p.work_id || '') === String(work);
+          const matchArea = !area || String(p.area_code || '') === String(area);
+          const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat].some(v => String(v || '').toLowerCase().includes(text));
+          return matchGov && matchStatus && matchWork && matchArea && matchText;
+        });
+        drawMap();
+      } else if (type === 'governorates' && governoratesLayer) {
+        const newFeatures = [];
+        group.eachLayer(layer => { newFeatures.push(layer.toGeoJSON()); });
+        const fc = { type: 'FeatureCollection', features: newFeatures };
+        map.removeLayer(governoratesLayer);
+        if (governoratesLabelsLayer) map.removeLayer(governoratesLabelsLayer);
+        governoratesLayer = L.geoJSON(fc, {
+          style: { color: '#18354a', weight: 3, fill: false, opacity: 0.9, dashArray: '6 4' },
+          onEachFeature: function (feature, layer) {
+            layer.options = layer.options || {};
+            layer.options.pmIgnore = false;
+            try {
+              if (layer.pm && layer.pm.setOptions) {
+                layer.pm.setOptions({
+                  allowSelfIntersection: false,
+                  snappable: false,
+                  draggable: false
+                });
+              }
+            } catch (e) { }
+
+            layer.__popupClickHandler = function (e) {
+              if (suppressGovernoratePopups || shapeEditArmed || currentEditLayerType) return;
+              map.flyToBounds(layer.getBounds(), { padding: [30, 30], duration: 0.8 });
+            };
+            layer.__hoverInHandler = function () { if (suppressGovernorateHover || shapeEditArmed) return; layer.setStyle({ weight: 4, opacity: 1 }); };
+            layer.__hoverOutHandler = function () { if (suppressGovernorateHover || shapeEditArmed) return; governoratesLayer.resetStyle(layer); };
+            layer.on('click', layer.__popupClickHandler);
+            layer.on('mouseover', layer.__hoverInHandler);
+            layer.on('mouseout', layer.__hoverOutHandler);
+          }
+        }).addTo(map);
+        governoratesLabelsLayer = L.layerGroup().addTo(map);
+        fc.features.forEach(feature => {
+          const label = feature.properties?.name || feature.properties?.Name_Gov || 'محافظة';
+          const center = L.geoJSON(feature).getBounds().getCenter();
+          governoratesLabelsLayer.addLayer(L.marker(center, {
+            interactive: true,
+            icon: L.divIcon({ className: 'gov-label', html: label, iconSize: null })
+          }));
+        });
+        editableGovernoratesGroup.clearLayers();
+        governoratesLayer.eachLayer(layer => {
+          if (layer.feature && layer.feature.geometry && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon')) {
+            editableGovernoratesGroup.addLayer(layer);
+          }
+        });
+      }
+    }
+
+    function startShapeEdit() {
+      if (!editMode) {
+        showNotice('error', 'وضع التعديل غير مفعل', 'قم بتفعيل وضع التعديل أولًا.');
+        return;
+      }
+      pendingShapeEditType = document.getElementById('shapeLayerSelect').value;
+      openShapeEditConfirmModal();
+    }
+
+    function stopShapeEdit(showMessage = true) {
+      shapeEditArmed = false;
+      pendingShapeEditType = null;
+      closeShapeEditConfirmModal();
+
+      try {
+        syncOverlayEditToSource();
+      } catch (e) { }
+
+      try {
+        if (activeEditedLayer) {
+          if (activeEditedLayer.pm && activeEditedLayer.pm.enabled && activeEditedLayer.pm.enabled()) {
+            activeEditedLayer.pm.disable();
+          }
+        }
+      } catch (e) { }
+
+      removeActiveEditOverlay();
+      activeEditedLayer = null;
+
+      if (currentEditLayerType) {
+        setShapeEditPresentation(false, currentEditLayerType);
+      }
+
+      currentEditLayerType = null;
+      renderEditSilentMode = false;
+
+      if (geoLayer) {
+        map.removeLayer(geoLayer);
+        geoLayer = null;
+      }
+      allFeatureLayers = [];
+      drawMap();
+
+      if (showMessage) {
+        showNotice('success', 'تم إيقاف التعديل', 'عادت جميع الميزات مثل الهوفر والبوب أب والبوب تيب.');
+      }
+    }
+
+    function exportEditedLayer() {
+      const type = document.getElementById('shapeLayerSelect').value;
+      const group = getEditableGroupByType(type);
+      const fc = { type: 'FeatureCollection', features: [] };
+      group.eachLayer(layer => fc.features.push(layer.toGeoJSON()));
+      const blob = new Blob([JSON.stringify(fc, null, 2)], { type: 'application/geo+json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = type === 'governorates' ? 'governorates_edited.geojson' : 'zones_edited.geojson';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('darkMode', isDark);
+      const btn = document.getElementById('darkModeToggleBtn');
+      if (btn) {
+        btn.textContent = isDark ? '☀️ الوضع النهاري' : '🌙 الوضع الليلي';
+      }
+    }
+
+    window.handleFileUpload = function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const loader = document.getElementById('loaderOverlay');
+      if (loader) {
+        loader.querySelector('.loader-title').textContent = 'جاري تحديث البيانات...';
+        loader.classList.remove('hidden');
+      }
+
+      const fileName = file.name.toLowerCase();
+
+      function processParsedData(results) {
+        try {
+          zoneData = {}; // مسح البيانات القديمة
+          results.data.forEach(row => {
+            if (row.zone_code) {
+              row["حالة الحصر"] = normalizeStatus(row["حالة الحصر"]);
+              zoneData[row.zone_code] = row;
+            }
+          });
+
+          if (!activeGeoJSON) throw new Error("الخريطة غير محملة بعد");
+
+          allFeatures = activeGeoJSON.features.map(feature => {
+            const code = feature.properties.zone_code;
+            const row = zoneData[code] || {};
+            const merged = JSON.parse(JSON.stringify(feature));
+            merged.properties = { ...feature.properties, ...row };
+            merged.properties.type_statu = normalizeStatus(merged.properties.type_statu);
+            return merged;
+          });
+
+          loadUpdatesFromFirestore().then(() => {
+            if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+            filteredFeatures = allFeatures.slice();
+            populateFilters();
+            updateLegend();
+            drawMap();
+            updateCards();
+            renderTables();
+            hideLoader();
+            try { showNotice('success', 'تم التحديث', 'تم استبدال ملف البيانات مع الاحتفاظ بالخريطة.'); } catch (e) { }
+          });
+        } catch (e) {
+          console.error(e);
+          failLoader('حدث خطأ أثناء معالجة البيانات');
+        }
+      }
+
+      if (fileName.endsWith('.csv')) {
+        Papa.parse(file, { header: true, skipEmptyLines: true, complete: processParsedData, error: () => failLoader('تعذر قراءة الملف المرفوع') });
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            processParsedData({ data: jsonData });
+          } catch (err) {
+            failLoader('تعذر قراءة ملف الإكسل المرفوع');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        failLoader('يرجى رفع ملف بصيغة CSV أو Excel');
+      }
+    };
+
+    window.handleGeoFileUpload = async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const loader = document.getElementById('loaderOverlay');
+      if (loader) {
+        loader.querySelector('.loader-title').textContent = 'جاري تحديث الخريطة...';
+        loader.classList.remove('hidden');
+      }
+
+      const reader = new FileReader();
+      reader.onload = async function (e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.features) throw new Error("الملف المرفق لا يحتوي على بيانات GeoJSON صالحة");
+
+          activeGeoJSON = data;
+          allFeatures = data.features.map(feature => {
+            const code = feature.properties.zone_code;
+            const row = zoneData[code] || {};
+            const merged = JSON.parse(JSON.stringify(feature));
+            merged.properties = { ...feature.properties, ...row };
+
+            // معالجة حالة الحصر
+            merged.properties.type_statu = normalizeStatus(merged.properties.type_statu);
+            return merged;
+          });
+
+          await loadUpdatesFromFirestore(); // تطبيق التحديثات السحابية على الخريطة الجديدة
+          if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+          filteredFeatures = allFeatures.slice();
+          populateFilters();
+          updateLegend();
+          drawMap();
+          updateCards();
+          renderTables();
+          startRealtimeUpdates(); // إعادة تفعيل التزامن اللحظي
+          hideLoader();
+          try { showNotice('success', 'تم التحديث', 'تم استبدال ملف الخريطة بنجاح.'); } catch (err) { }
+        } catch (err) {
+          console.error(err);
+          failLoader('تعذر قراءة ملف GeoJSON المرفوع');
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    window.resetBaseData = function () {
+      const loader = document.getElementById('loaderOverlay');
+      if (loader) {
+        loader.querySelector('.loader-title').textContent = 'جاري استعادة بيانات الأساس...';
+        loader.classList.remove('hidden');
+      }
+      document.getElementById('dataFileInput').value = '';
+
+      Papa.parse("./zones.csv", {
+        download: true,
+        header: true,
+        error: function () { failLoader('تعذر تحميل ملف zones.csv'); },
+        complete: async function (results) {
+          try {
+            zoneData = {};
+            results.data.forEach(row => {
+              if (row.zone_code) {
+                row["حالة الحصر"] = normalizeStatus(row["حالة الحصر"]);
+                zoneData[row.zone_code] = row;
+              }
+            });
+            if (!activeGeoJSON) return;
+            allFeatures = activeGeoJSON.features.map(feature => {
+              const code = feature.properties.zone_code;
+              const row = zoneData[code] || {};
+              const merged = JSON.parse(JSON.stringify(feature));
+              merged.properties = { ...feature.properties, ...row };
+
+              // معالجة حالة الحصر
+              merged.properties.type_statu = normalizeStatus(merged.properties.type_statu);
+              return merged;
+            });
+            await loadUpdatesFromFirestore();
+            if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+            filteredFeatures = allFeatures.slice();
+            populateFilters();
+            updateLegend();
+            drawMap();
+            updateCards();
+            renderTables();
+            hideLoader();
+            try { showNotice('success', 'تم الاستعادة', 'تمت استعادة البيانات الأساسية بنجاح.'); } catch (e) { }
+          } catch (e) { failLoader('حدث خطأ أثناء الاستعادة'); }
+        }
+      });
+    };
+
+    window.resetBaseMap = async function () {
+      const loader = document.getElementById('loaderOverlay');
+      if (loader) {
+        loader.querySelector('.loader-title').textContent = 'جاري استعادة خريطة الأساس...';
+        loader.classList.remove('hidden');
+      }
+      document.getElementById('geoFileInput').value = '';
+
+      try {
+        if (!originalGeoJSON) {
+          const r = await fetch("./zone.geojson");
+          originalGeoJSON = await r.json();
+        }
+        activeGeoJSON = originalGeoJSON;
+        allFeatures = activeGeoJSON.features.map(feature => {
+          const code = feature.properties.zone_code;
+          const row = zoneData[code] || {};
+          const merged = JSON.parse(JSON.stringify(feature));
+          merged.properties = { ...feature.properties, ...row };
+
+          // معالجة حالة الحصر
+          merged.properties.type_statu = normalizeStatus(merged.properties.type_statu);
+          return merged;
+        });
+
+        await loadUpdatesFromFirestore();
+        if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+        filteredFeatures = allFeatures.slice();
+        populateFilters();
+        updateLegend();
+        drawMap();
+        updateCards();
+        renderTables();
+        hideLoader();
+        try { showNotice('success', 'تم الاستعادة', 'تمت استعادة الخريطة الأساسية بنجاح.'); } catch (e) { }
+      } catch (e) {
+        failLoader('حدث خطأ أثناء استعادة الخريطة');
+      }
+    };
+
+    window.exportGeoJSON = function () {
+      if (!allFeatures || allFeatures.length === 0) {
+        try { showNotice('error', 'خطأ', 'الخريطة فارغة، لا يوجد بيانات لتصديرها.'); } catch (e) { }
+        return;
+      }
+      const geojson = {
+        type: "FeatureCollection",
+        features: allFeatures
+      };
+      const dataStr = JSON.stringify(geojson, null, 2);
+      const blob = new Blob([dataStr], { type: "application/geo+json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "gaza_updated_zones.geojson";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      try { showNotice('success', 'تم التحميل', 'تم حفظ الخريطة المحدثة بنجاح.'); } catch (e) { }
+    };
+
+    window.runSearch = runSearch;
+    window.clearSearch = clearSearch;
+    window.applyFilters = applyFilters;
+    window.resetFilters = resetFilters;
+    window.resetMapView = resetMapView;
+    window.toggleEditMode = toggleEditMode;
+    window.exportReports = exportReports;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.submitEditPassword = submitEditPassword;
+    window.toggleDarkMode = toggleDarkMode;
+    window.toggleSidebar = toggleSidebar;
+    window.buildStatisticsChart = buildStatisticsChart;
+    window.hideStatisticsChart = hideStatisticsChart;
+    window.startShapeEdit = startShapeEdit;
+    window.stopShapeEdit = stopShapeEdit;
+    window.exportEditedLayer = exportEditedLayer;
+    window.openChangePasswordModal = openChangePasswordModal;
+    window.closeChangePasswordModal = closeChangePasswordModal;
+    window.submitPasswordChange = submitPasswordChange;
+
+    // --- New Zone Details Functions ---
+    window.showZoneDetails = function (p) {
+      if (!p) return;
+      const pane = document.getElementById('zoneDetailSidebar');
+      const content = document.getElementById('zoneDetailContent');
+      const title = document.getElementById('zoneDetailTitle');
+
+      const statusList = [
+        { label: 'لم يتم زيارته', key: 'no_visited', color: '#f2c94c' },
+        { label: 'تم أعمال الحصر بالكامل', key: 'complete', color: '#27ae60' },
+        { label: 'الحصر الجزئي', key: 'partial1', color: '#2f80ed' },
+        { label: 'رفض الحصر', key: 'rejected1', color: '#000000' },
+        { label: 'يحتاج لجنة فنية', key: 'committe', color: '#d9534f' }
+      ];
+
+      title.textContent = p.name_1 || "تفاصيل المنطقة";
+
+      let html = `
+        <div class="detail-card-special">
+          <div class="detail-row-special">
+            <span class="detail-label-special">كود الزون</span>
+            <span class="detail-value-special">${p.zone_code || '-'}</span>
+          </div>
+          <div class="detail-row-special">
+            <span class="detail-label-special">المحافظة</span>
+            <span class="detail-value-special">${p.governorat || '-'}</span>
+          </div>
+          <div class="detail-row-special">
+            <span class="detail-label-special">الحي / المنطقة</span>
+            <span class="detail-value-special">${p.Neighborhood || p.Address || '-'}</span>
+          </div>
+        </div>
+
+        <h4 style="margin: 20px 0 12px; font-size: 15px; color: var(--primary);">حالات الحصر (المباني)</h4>
+        <div class="detail-card-special">
+          ${statusList.map(s => `
+            <div class="status-count-item">
+              <div class="status-icon-dot" style="background: ${s.color}"></div>
+              <div style="flex: 1; font-size: 13px;">${s.label}</div>
+              <div style="font-weight: 700;">${safeNum(p[s.key])}</div>
+            </div>
+          `).join('')}
+          <div class="detail-row-special" style="margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 10px;">
+            <span class="detail-label-special">إجمالي المباني</span>
+            <span class="detail-value-special">${safeNum(p.total_all || p.unit_count)}</span>
+          </div>
+          <div class="detail-row-special">
+            <span class="detail-label-special">نسبة الإنجاز</span>
+            <span class="detail-value-special">${Math.round(((safeNum(p.total_all || p.unit_count) - safeNum(p.no_visited)) / (safeNum(p.total_all || p.unit_count) || 1)) * 100)}%</span>
+          </div>
+        </div>
+
+        <h4 style="margin: 20px 0 12px; font-size: 15px; color: var(--primary);">الموارد والفرق</h4>
+        <div class="detail-card-special">
+          <div class="detail-row-special">
+            <span class="detail-label-special">عدد الفرق</span>
+            <span class="detail-value-special">${Math.floor(p.teams_coun || p.teams_coun || 0)}</span>
+          </div>
+          <div class="detail-row-special">
+            <span class="detail-label-special">عدد المهندسين</span>
+            <span class="detail-value-special">${Math.floor(p.engineers_ || p.engineers_ || 0)}</span>
+          </div>
+        </div>
+      `;
+
+      content.innerHTML = html;
+      
+      content.classList.remove('fade-in');
+      void content.offsetWidth; // reflow to restart animation
+      content.classList.add('fade-in');
+
+      pane.classList.add('active');
+    };
+
+    window.showZoneDetailsByCode = function (code) {
+      const feature = allFeatures.find(f => f.properties.zone_code === code);
+      if (feature) window.showZoneDetails(feature.properties);
+    };
+
+    window.closeZoneDetails = function () {
+      document.getElementById('zoneDetailSidebar').classList.remove('active');
+    };
+    // ----------------------------------
+
+    window.addEventListener("error", (e) => {
+
+      console.error('Runtime error:', e?.error || e?.message || e);
+
+      const loader = document.getElementById('loaderOverlay');
+      console.error('Runtime error:', e?.error || e?.message || e);
+      if (loader && !loader.classList.contains('hidden')) {
+        failLoader('حدث خطأ غير متوقع أثناء تحميل الواجهة.');
+      } else {
+        try { showNotice('error', 'حدث خطأ أثناء التنفيذ', 'تم التقاط الخطأ دون إيقاف اللوحة.'); } catch (err) { }
+      }
+    });
+    setTimeout(() => {
+      const loader = document.getElementById('loaderOverlay');
+      if (loader && !loader.classList.contains('hidden')) {
+        failLoader('انتهت مهلة التحميل. تأكد من وجود الملفات المطلوبة ثم حدث الصفحة.');
+      }
+    }, 10000);
+
+    document.addEventListener("keydown", (e) => {
+      const authOpen = document.getElementById('authModal')?.classList.contains('active');
+      const changeOpen = document.getElementById('changePasswordModal')?.classList.contains('active');
+      if (authOpen && e.key === 'Enter') submitEditPassword();
+      if (authOpen && e.key === 'Escape') closeAuthModal();
+      if (changeOpen && e.key === 'Enter') submitPasswordChange();
+      if (changeOpen && e.key === 'Escape') closeChangePasswordModal();
+    });
+
+    // تهيئة الوضع الليلي
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark-mode');
+      const darkBtn = document.getElementById('darkModeToggleBtn');
+      if (darkBtn) darkBtn.textContent = '☀️ الوضع النهاري';
+    }
+
+    loadCsv();
+  </script>
+  <script>
+
+    // fullscreen map
+    function toggleMapFullscreen() {
+
+      const mapContainer = document.getElementById("map");
+
+      if (!document.fullscreenElement) {
+        mapContainer.requestFullscreen();
+      }
+      else {
+        document.exitFullscreen();
+      }
+
+    }
+
+
+
+
+  </script>
+  <div id="zoneDetailSidebar" class="zone-details-sidebar">
+    <div class="sidebar-header-special">
+      <div id="zoneDetailClose" class="sidebar-close-special" onclick="closeZoneDetails()">×</div>
+      <h2 id="zoneDetailTitle" style="margin:0; font-size: 18px;">تفاصيل الزون</h2>
+    </div>
+    <div id="zoneDetailContent" class="sidebar-content-special">
+      <!-- Content populated by JS -->
+    </div>
+  </div>
+</body>
+
+</html>
