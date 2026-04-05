@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول - لوحة GIS غزة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #18354a;
+      --secondary: #2f80ed;
+      --bg: #eef2f6;
+      --white: rgba(255, 255, 255, 0.85);
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #18354a 0%, #2f80ed 100%);
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    /* Abstract Shapes for background */
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 0;
+      filter: blur(80px);
+      opacity: 0.4;
+    }
+
+    .shape-1 {
+      width: 400px;
+      height: 400px;
+      background: #f2c94c;
+      top: -100px;
+      left: -100px;
+    }
+
+    .shape-2 {
+      width: 300px;
+      height: 300px;
+      background: #27ae60;
+      bottom: -50px;
+      right: -50px;
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 450px;
+      background: var(--white);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 30px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      text-align: center;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logos {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .logos img {
+      height: 50px;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.1));
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0 0 30px;
+      color: #666;
+      font-size: 15px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      text-align: right;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 15px 20px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.6);
+      font-size: 16px;
+      color: var(--primary);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .input-group input:focus {
+      border-color: var(--secondary);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(47, 128, 237, 0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, var(--primary) 0%, #2b5876 100%);
+      color: white;
+      border: none;
+      border-radius: 15px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 20px rgba(24, 53, 74, 0.3);
+      margin-top: 10px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px rgba(24, 53, 74, 0.4);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    #error-msg {
+      color: #d9534f;
+      margin-top: 15px;
+      font-size: 14px;
+      min-height: 20px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+      width: 100%;
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+    }
+
+    /* Directional support */
+    input::placeholder {
+      text-align: right;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shape shape-1"></div>
+  <div class="shape shape-2"></div>
+
+  <div class="login-container">
+    <div class="logos">
+      <img src="logo2.png" alt="Logo 2">
+      <img src="logo3.png" alt="Logo 3">
+    </div>
+    <h1>لوحة متابعة الحصر الميداني</h1>
+    <p>نظام نظم المعلومات الجغرافية - غزة</p>
+
+    <form id="login-form">
+      <div class="input-group">
+        <label>اسم المستخدم</label>
+        <input type="text" id="username" placeholder="أدخل اسم المستخدم" required>
+      </div>
+      <div class="input-group">
+        <label>كلمة المرور</label>
+        <input type="password" id="password" placeholder="أدخل كلمة المرور" required>
+      </div>
+      <button type="submit" class="login-btn">تسجيل الدخول</button>
+      <div id="error-msg">خطأ في اسم المستخدم أو كلمة المرور</div>
+    </form>
+  </div>
+
+  <div class="footer">
+    © جميع الحقوق محفوظة لدى الهيئة العربية الدولية للإعمار في فلسطين
+  </div>
+
+  <script type="module">
+    import { users } from './users.js';
+
+    const loginForm = document.getElementById('login-form');
+    const errorMsg = document.getElementById('error-msg');
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const usernameInput = document.getElementById('username').value.trim().toLowerCase();
+      const passwordInput = document.getElementById('password').value;
+
+      const user = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
+
+      if (user) {
+        // Save user session
+        localStorage.setItem('currentUser', JSON.stringify({
+          username: user.username,
+          fullName: user.fullName || user.username,
+          role: user.role,
+          governorate: user.governorate
+        }));
+        
+        // Redirect to main dashboard
+        window.location.href = 'index.html';
+      } else {
+        errorMsg.style.opacity = '1';
+        setTimeout(() => {
+          errorMsg.style.opacity = '0';
+        }, 3000);
+      }
+    });
+
+    // Check if already logged in
+    const session = localStorage.getItem('currentUser');
+    if (session) {
+       // Optional: Redirect to index.html if already logged in
+       // window.location.href = 'index.html';
+    }
+  </script>
+</body>
+
+</html>

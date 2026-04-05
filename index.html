@@ -4,6 +4,7 @@
 <head>
 
   <meta charset="utf-8">
+  <script src="access-control.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>لوحة متابعة الحصر الميداني - غزة</title>
 
@@ -12,6 +13,79 @@
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
+    /* Glassmorphic Welcome Screen */
+    .glass-welcome-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(16, 35, 52, 0.4);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    .glass-welcome-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .glass-welcome-overlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 30px;
+      padding: 50px 70px;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+      transform: scale(0.9);
+      transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      color: #fff;
+    }
+
+    .glass-welcome-overlay.active .glass-card {
+      transform: scale(1);
+    }
+
+    .glass-card h2 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      font-weight: 300;
+    }
+
+    .glass-card h1 {
+      font-size: 40px;
+      margin: 0;
+      background: linear-gradient(135deg, #fff 0%, #a5c0d6 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: bold;
+    }
+
+    .glass-card .icon-wrap {
+      font-size: 60px;
+      margin-bottom: 20px;
+      animation: pulse-welcome 2s infinite;
+    }
+
+    @keyframes pulse-welcome {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
     :root {
       --bg: #eef2f6;
       --panel: #ffffff;
@@ -2005,6 +2079,7 @@
           <button class="btn-light" onclick="exportReports()">Export Excel</button>
           <button class="btn-light" onclick="toggleMapFullscreen()">Fullscreen Map</button>
           <button onclick="resetMapView(); resetFilters();">Reset View</button>
+          <button class="btn-light" onclick="window.logout()" style="color: #d9534f; font-weight: bold;">تسجيل الخروج</button>
         </div>
       </div>
 
@@ -2169,6 +2244,16 @@
     <div class="egg-card">
       <img src="./logo5.png" alt="logo5">
       <div class="egg-text">403756935</div>
+    </div>
+  </div>
+
+  <!-- Glassmorphic Welcome Overlay -->
+  <div id="glassWelcomeOverlay" class="glass-welcome-overlay">
+    <div class="glass-card">
+        <div class="icon-wrap">🛡️</div>
+        <h2>أهلاً بك بشمهندس</h2>
+        <h1 id="welcomeUserName">...</h1>
+        <p style="margin-top: 20px; opacity: 0.7;">يتم الآن تهيئة لوحة البيانات الخاصة بك</p>
     </div>
   </div>
 
@@ -2750,26 +2835,10 @@
         applyZoneUpdatesToFeatures(snapshot);
 
         updateLegend();
-        const gov = document.getElementById('filterGov')?.value || '';
-        const status = document.getElementById('filterStatus')?.value || '';
-        const work = document.getElementById('filterWork')?.value || '';
-        const area = document.getElementById('filterArea')?.value || '';
-        const text = document.getElementById('searchText')?.value?.trim().toLowerCase() || '';
+        
+        // Re-apply current filtering to account for updates
+        applyFilters();
 
-        filteredFeatures = allFeatures.filter(f => {
-          const p = f.properties;
-          const matchGov = !gov || p.governorat === gov;
-          const matchStatus = !status || normalizeStatus(p.type_statu) === status;
-          const matchWork = !work || String(p.work_id || '') === String(work);
-          const matchArea = !area || String(p.area_code || '') === String(area);
-          const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
-            .some(v => String(v || '').toLowerCase().includes(text));
-          return matchGov && matchStatus && matchWork && matchArea && matchText;
-        });
-
-        drawMap();
-        updateCards();
-        renderTables();
         isRemoteSyncing = false;
       });
     }
@@ -2819,19 +2888,42 @@
         await initGovernoratesLayer();
 
         if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
-        filteredFeatures = allFeatures.slice();
+        
         populateFilters();
+        applyFilters(); 
+        
         updateLegend();
-        drawMap();
-        updateCards();
-        renderTables();
         updateModeUI();
         startRealtimeUpdates();
         hideLoader();
+
+        // Show Glassmorphic Welcome Screen
+        showUserWelcomeScreen();
+
       } catch (e) {
         console.error("خطأ أثناء تحميل البيانات الجغرافية:", e);
-        failLoader("تعذر تحميل ملف الخريطة الأساسية (zone.geojson)، يرجى التأكد من وجوده.");
+        // failLoader is only called if a critical error happens (like fetch fails)
+        // If it's just a UI element missing, we don't want to show the red banner
+        if (e.name !== 'TypeError') {
+            failLoader("حدث خطأ أثناء تهيئة الخريطة، يرجى تحديث الصفحة.");
+        }
       }
+    }
+
+    function showUserWelcomeScreen() {
+        const welcome = document.getElementById('glassWelcomeOverlay');
+        const nameText = document.getElementById('welcomeUserName');
+        if (!welcome || !currentUser) return;
+
+        nameText.textContent = currentUser.fullName || currentUser.username;
+        welcome.classList.add('active');
+
+        setTimeout(() => {
+            welcome.classList.add('fade-out');
+            setTimeout(() => {
+                welcome.classList.remove('active', 'fade-out');
+            }, 800);
+        }, 3000);
     }
 
     function populateSelect(id, values, allLabel) {
@@ -2842,8 +2934,39 @@
         unique.map(v => `<option value="${String(v)}">${String(v)}</option>`).join('');
     }
 
+    /**
+     * Helper to check if a governorate is within the user's assigned scope.
+     */
+    function isGovAllowed(featureGov) {
+      const assigned = window.getAssignedGovernorate();
+      if (!assigned || assigned === 'all') return true;
+      if (Array.isArray(assigned)) return assigned.includes(featureGov);
+      return featureGov === assigned;
+    }
+
     function populateFilters() {
-      populateSelect('filterGov', allFeatures.map(f => f.properties.governorat), 'كل المحافظات');
+      const assignedGov = window.getAssignedGovernorate();
+      const el = document.getElementById('filterGov');
+      if (!el) return;
+      
+      if (assignedGov) {
+        if (Array.isArray(assignedGov)) {
+          // Multiple assigned governorates
+          el.innerHTML = `<option value="">كل محافظاتي (${assignedGov.join('، ')})</option>` +
+            assignedGov.map(v => `<option value="${v}">${v}</option>`).join('');
+          el.disabled = false;
+        } else {
+          // Single assigned governorate
+          el.innerHTML = `<option value="${assignedGov}">${assignedGov}</option>`;
+          el.value = assignedGov;
+          el.disabled = true;
+        }
+      } else {
+        // Admin: show all
+        populateSelect('filterGov', allFeatures.map(f => f.properties.governorat), 'كل المحافظات');
+        el.disabled = false;
+      }
+      
       populateSelect('filterStatus', allFeatures.map(f => normalizeStatus(f.properties.type_statu)), 'كل الحالات');
       populateSelect('filterWork', allFeatures.map(f => f.properties.work_id), 'كل مناطق العمل');
       populateSelect('filterArea', allFeatures.map(f => f.properties.area_code), 'كل أكواد الحصر');
@@ -3388,20 +3511,29 @@
     }
 
     function applyFilters() {
-      const gov = document.getElementById('filterGov').value;
-      const status = document.getElementById('filterStatus').value;
-      const work = document.getElementById('filterWork').value;
-      const area = document.getElementById('filterArea').value;
-      const text = document.getElementById('searchText').value.trim().toLowerCase();
+      const assignedGov = window.getAssignedGovernorate();
+      const elGov = document.getElementById('filterGov');
+      const selectedGov = elGov ? elGov.value : '';
+      
+      const status = document.getElementById('filterStatus')?.value || '';
+      const work = document.getElementById('filterWork')?.value || '';
+      const area = document.getElementById('filterArea')?.value || '';
+      const text = document.getElementById('searchText')?.value?.trim().toLowerCase() || '';
 
       filteredFeatures = allFeatures.filter(f => {
         const p = f.properties;
-        const matchGov = !gov || p.governorat === gov;
+        
+        // 1. Hard restriction check
+        if (!isGovAllowed(p.governorat)) return false;
+
+        // 2. User selected dropdown check
+        const matchGov = !selectedGov || p.governorat === selectedGov;
         const matchStatus = !status || normalizeStatus(p.type_statu) === status;
         const matchWork = !work || String(p.work_id || '') === String(work);
         const matchArea = !area || String(p.area_code || '') === String(area);
         const matchText = !text || [p.name_1, p.zone_code, p.work_id, p.area_code, p.governorat]
           .some(v => String(v || '').toLowerCase().includes(text));
+          
         return matchGov && matchStatus && matchWork && matchArea && matchText;
       });
 
@@ -3411,15 +3543,22 @@
     }
 
     function resetFilters() {
-      document.getElementById('filterGov').value = '';
-      document.getElementById('filterStatus').value = '';
-      document.getElementById('filterWork').value = '';
-      document.getElementById('filterArea').value = '';
-      document.getElementById('searchText').value = '';
-      filteredFeatures = allFeatures.slice();
-      drawMap();
-      updateCards();
-      renderTables();
+      const elGov = document.getElementById('filterGov');
+      if (elGov && !elGov.disabled) elGov.value = '';
+      
+      const statusEl = document.getElementById('filterStatus');
+      if (statusEl) statusEl.value = '';
+      
+      const workEl = document.getElementById('filterWork');
+      if (workEl) workEl.value = '';
+      
+      const areaEl = document.getElementById('filterArea');
+      if (areaEl) areaEl.value = '';
+      
+      const searchEl = document.getElementById('searchText');
+      if (searchEl) searchEl.value = '';
+
+      applyFilters();
     }
 
     function runSearch() {
@@ -3489,19 +3628,26 @@
       const editShapePanel = document.getElementById('editShapePanel');
       const passwordManagePanel = document.getElementById('passwordManagePanel');
 
+      if (!modeInline) return; // Basic safety
+
       if (editMode) {
-        btn.textContent = '👁️ View Mode';
-        btn.classList.remove('btn-light');
-        btn.classList.add('btn-success');
-        modeInline.textContent = userRole === 'engineer' ? 'وضع التعديل المحدود' : 'وضع التعديل مفعل';
-        if (dataManagementPanel) dataManagementPanel.style.display = userRole === 'admin' ? 'block' : 'none';
+        if (btn) {
+          btn.textContent = '👁️ View Mode';
+          btn.classList.remove('btn-light');
+          btn.classList.add('btn-success');
+        }
+        modeInline.textContent = currentUser?.role === 'admin' ? 'وضع التعديل مفعل' : 'وضع التعديل المحدود';
+        
+        if (dataManagementPanel) dataManagementPanel.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
         if (chartBuilderPanel) chartBuilderPanel.classList.add('active');
         if (editShapePanel) editShapePanel.classList.add('active');
         if (passwordManagePanel) passwordManagePanel.classList.add('active');
       } else {
-        btn.textContent = '✏️ Edit Mode';
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-light');
+        if (btn) {
+          btn.textContent = '✏️ Edit Mode';
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-light');
+        }
         modeInline.textContent = 'وضع العرض فقط';
         if (dataManagementPanel) dataManagementPanel.style.display = 'none';
         if (chartBuilderPanel) chartBuilderPanel.classList.remove('active');
